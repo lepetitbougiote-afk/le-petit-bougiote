@@ -1,20 +1,31 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Le Petit Bougiote
 
-# Run and deploy your AI Studio app
+Application React + Vite pour le restaurant Le Petit Bougiote à Béziers.
 
-This contains everything you need to run your app locally.
+## Scripts
 
-View your app in AI Studio: https://ai.studio/apps/869cdcab-d52e-4845-842d-8688ae86d186
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+```
 
-## Run Locally
+## Variables d'environnement
 
-**Prerequisites:**  Node.js
+Copier `.env.example` vers `.env` puis renseigner si besoin :
 
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_GA_MEASUREMENT_ID`
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+L’application fonctionne sans Supabase branché grâce à la couche de services mock.
+
+## Structure
+
+- `src/data`: données métier locales et mocks
+- `src/services`: interface stable prête pour le remplacement par Supabase
+- `src/pages/public`: site public + commande
+- `src/pages/account`: pages compte client
+- `src/pages/admin`: espace administration mock
+- `supabase`: schéma, seed, RLS et policies storage

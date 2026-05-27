@@ -1,17 +1,33 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-cream: #FDF8F0;
-  --color-brand-green: #1F3F2F;
-  --color-brand-orange: #D86F45;
+  --color-brand-cream: #F5F0E6;
+  --color-brand-offwhite: #FBF8F2;
+  --color-brand-green: #4A8B45;
+  --color-brand-deepgreen: #2F5E33;
+  --color-brand-wood: #5A3A22;
+  --color-brand-espresso: #3E281A;
+  --color-brand-border: #DDD4C7;
+  --color-brand-orange: #8F5D3B;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-cream text-gray-900 font-sans antialiased selection:bg-brand-orange/20 selection:text-brand-orange;
+    @apply bg-brand-cream text-slate-900 font-sans antialiased selection:bg-brand-green/15 selection:text-brand-green;
+  }
+
+  a {
+    @apply transition-colors;
+  }
+
+  button {
+    @apply transition-all;
   }
 }
-
