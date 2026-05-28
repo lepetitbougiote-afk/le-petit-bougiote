@@ -1,16 +1,19 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
+import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { formatPrice, getDesiredTimeLabel, getDiningModeLabel, getFulfillmentTypeLabel } from '../../lib/utils';
 import { analyticsService } from '../../services/analyticsService';
 import { orderService } from '../../services/orderService';
-import type { ConfirmationStatus, DiningMode, FulfillmentType, Order } from '../../types';
+import { userService } from '../../services/userService';
+import type { ConfirmationStatus, DiningMode, FulfillmentType, Order, UserProfile } from '../../types';
 
 const DELIVERY_FEE = 4;
 
 export default function CheckoutPage() {
+  const { user } = useAuth();
   const {
     items,
     fulfillmentType: cartFulfillmentType,
@@ -25,6 +28,15 @@ export default function CheckoutPage() {
   const [showDeliveryNotice, setShowDeliveryNotice] = useState(true);
   const [fulfillmentType, setLocalFulfillmentType] = useState<FulfillmentType>(cartFulfillmentType);
   const [diningMode, setLocalDiningMode] = useState<DiningMode>(cartDiningMode ?? 'sur_place');
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [form, setForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    customerEmail: '',
+    deliveryAddress: '',
+    desiredTime: '',
+    customerNote: '',
+  });
 
   const isDelivery = fulfillmentType === 'delivery';
   const deliveryFee = isDelivery ? DELIVERY_FEE : 0;
@@ -36,9 +48,33 @@ export default function CheckoutPage() {
     [isDelivery],
   );
 
+  useEffect(() => {
+    if (!user || profileLoaded) {
+      return;
+    }
+
+    async function loadProfile() {
+      const profile = await userService.getProfile();
+      if (!profile) {
+        setProfileLoaded(true);
+        return;
+      }
+
+      setForm((current) => ({
+        ...current,
+        customerName: current.customerName || profile.fullName,
+        customerPhone: current.customerPhone || profile.phone,
+        customerEmail: current.customerEmail || profile.email,
+        deliveryAddress: current.deliveryAddress || profile.address,
+      }));
+      setProfileLoaded(true);
+    }
+
+    void loadProfile();
+  }, [profileLoaded, user]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
     setSubmitting(true);
 
     setFulfillmentType(fulfillmentType);
@@ -48,18 +84,18 @@ export default function CheckoutPage() {
       fulfillmentType,
       diningMode: isDelivery ? null : diningMode,
       orderSource: isDelivery ? 'delivery_web' : 'menu_qr',
-      customerName: String(formData.get('customerName') ?? '').trim(),
-      customerPhone: String(formData.get('customerPhone') ?? '').trim() || undefined,
-      customerEmail: String(formData.get('customerEmail') ?? '').trim() || undefined,
-      deliveryAddress: isDelivery ? String(formData.get('deliveryAddress') ?? '').trim() || undefined : undefined,
+      customerName: form.customerName.trim(),
+      customerPhone: form.customerPhone.trim() || undefined,
+      customerEmail: form.customerEmail.trim() || undefined,
+      deliveryAddress: isDelivery ? form.deliveryAddress.trim() || undefined : undefined,
       deliveryFee,
-      desiredTime: String(formData.get('desiredTime') ?? '').trim() || undefined,
+      desiredTime: form.desiredTime.trim() || undefined,
       confirmationStatus,
       proposedTime: undefined,
       customerConfirmationRequired: isDelivery,
       customerConfirmedAt: null,
       restaurantNote: isDelivery ? 'A confirmer selon la disponibilité du livreur.' : undefined,
-      customerNote: String(formData.get('customerNote') ?? '').trim() || undefined,
+      customerNote: form.customerNote.trim() || undefined,
       paymentMode: 'online_payment_pending',
       items,
     });
@@ -160,15 +196,33 @@ export default function CheckoutPage() {
                   <div className="mt-5 grid gap-5 md:grid-cols-2">
                     <label className="text-sm font-medium text-slate-700">
                       Nom
-                      <input required name="customerName" className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" />
+                      <input
+                        required
+                        name="customerName"
+                        value={form.customerName}
+                        onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+                        className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none"
+                      />
                     </label>
                     <label className="text-sm font-medium text-slate-700">
                       Téléphone
-                      <input required={isDelivery} name="customerPhone" className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" />
+                      <input
+                        required={isDelivery}
+                        name="customerPhone"
+                        value={form.customerPhone}
+                        onChange={(event) => setForm((current) => ({ ...current, customerPhone: event.target.value }))}
+                        className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none"
+                      />
                     </label>
                     <label className="text-sm font-medium text-slate-700 md:col-span-2">
                       Email (optionnel)
-                      <input name="customerEmail" type="email" className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" />
+                      <input
+                        name="customerEmail"
+                        type="email"
+                        value={form.customerEmail}
+                        onChange={(event) => setForm((current) => ({ ...current, customerEmail: event.target.value }))}
+                        className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none"
+                      />
                     </label>
                   </div>
                 </section>
@@ -218,18 +272,37 @@ export default function CheckoutPage() {
                       </div>
                       <label className="text-sm font-medium text-slate-700">
                         Heure souhaitée
-                        <input name="desiredTime" type="time" className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" />
+                        <input
+                          name="desiredTime"
+                          type="time"
+                          value={form.desiredTime}
+                          onChange={(event) => setForm((current) => ({ ...current, desiredTime: event.target.value }))}
+                          className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none"
+                        />
                       </label>
                     </div>
                   ) : (
                     <div className="mt-5 grid gap-5 md:grid-cols-2">
                       <label className="text-sm font-medium text-slate-700 md:col-span-2">
                         Adresse de livraison
-                        <input required={isDelivery} name="deliveryAddress" className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" placeholder="Rue, numéro, étage, code d’accès si besoin" />
+                        <input
+                          required={isDelivery}
+                          name="deliveryAddress"
+                          value={form.deliveryAddress}
+                          onChange={(event) => setForm((current) => ({ ...current, deliveryAddress: event.target.value }))}
+                          className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none"
+                          placeholder="Rue, numéro, étage, code d’accès si besoin"
+                        />
                       </label>
                       <label className="text-sm font-medium text-slate-700">
                         Créneau de livraison souhaité
-                        <input name="desiredTime" type="time" className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" />
+                        <input
+                          name="desiredTime"
+                          type="time"
+                          value={form.desiredTime}
+                          onChange={(event) => setForm((current) => ({ ...current, desiredTime: event.target.value }))}
+                          className="mt-2 w-full rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none"
+                        />
                       </label>
                       <div className="rounded-[1.6rem] border border-brand-green/10 bg-brand-offwhite p-5">
                         <p className="text-sm font-semibold text-slate-950">Livraison Béziers</p>
@@ -248,6 +321,8 @@ export default function CheckoutPage() {
                     Note de commande
                     <textarea
                       name="customerNote"
+                      value={form.customerNote}
+                      onChange={(event) => setForm((current) => ({ ...current, customerNote: event.target.value }))}
                       className="mt-2 min-h-32 w-full rounded-2xl border border-brand-green/10 bg-brand-cream p-4 outline-none"
                       placeholder={isDelivery ? 'Précision de livraison, code, étage, demande simple...' : 'Précision de retrait, préférence simple, demande pour le service...'}
                     />

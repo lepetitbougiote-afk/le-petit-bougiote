@@ -40,17 +40,19 @@ async function upsertProfileFromAuthUser(user: User): Promise<UserProfile> {
     profileStore?.fullName ??
     'Client';
   const phone = (user.user_metadata?.phone as string | undefined) ?? profileStore?.phone ?? '';
+  const address = (user.user_metadata?.address as string | undefined) ?? profileStore?.address ?? '';
 
   await supabaseClient.from('profiles').upsert({
     id: user.id,
     full_name: fullName,
     phone,
     email: user.email ?? null,
+    address,
   });
 
   const { data: profile } = await supabaseClient
     .from('profiles')
-    .select('id, full_name, phone, email')
+    .select('id, full_name, phone, email, address')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -61,6 +63,7 @@ async function upsertProfileFromAuthUser(user: User): Promise<UserProfile> {
     fullName: profile?.full_name ?? fullName,
     phone: profile?.phone ?? phone,
     email: profile?.email ?? user.email ?? '',
+    address: profile?.address ?? address,
     role,
   };
 }
@@ -96,9 +99,10 @@ export const userService = {
       if (data.user) {
         const payload = {
           id: data.user.id,
-          full_name: updates.fullName ?? profileStore.fullName,
-          phone: updates.phone ?? profileStore.phone,
-          email: updates.email ?? profileStore.email,
+          full_name: updates.fullName ?? profileStore?.fullName ?? 'Client',
+          phone: updates.phone ?? profileStore?.phone ?? '',
+          email: updates.email ?? profileStore?.email ?? data.user.email ?? '',
+          address: updates.address ?? profileStore?.address ?? '',
         };
 
         const { error } = await supabaseClient.from('profiles').upsert(payload);
@@ -109,6 +113,7 @@ export const userService = {
             fullName: payload.full_name,
             phone: payload.phone,
             email: payload.email,
+            address: payload.address,
             role,
           };
           return simulateAsync(profileStore, 100);
@@ -121,6 +126,7 @@ export const userService = {
       fullName: updates.fullName ?? profileStore?.fullName ?? 'Client',
       phone: updates.phone ?? profileStore?.phone ?? '',
       email: updates.email ?? profileStore?.email ?? '',
+      address: updates.address ?? profileStore?.address ?? '',
       role: updates.role ?? profileStore?.role,
     };
     return simulateAsync(profileStore);
@@ -130,7 +136,7 @@ export const userService = {
     if (supabaseClient) {
       const { data: profiles, error } = await supabaseClient
         .from('profiles')
-        .select('id, full_name, phone, email')
+        .select('id, full_name, phone, email, address')
         .order('created_at', { ascending: false });
 
       if (!error && profiles) {
@@ -148,6 +154,7 @@ export const userService = {
             fullName: profile.full_name ?? 'Client',
             phone: profile.phone ?? '',
             email: profile.email ?? '',
+            address: profile.address ?? '',
             orderCount: relatedOrders.length,
             lastOrderDate: relatedOrders[0]?.created_at ?? new Date(0).toISOString(),
           };
@@ -177,12 +184,10 @@ export const userService = {
 
   async signUp({
     fullName,
-    phone,
     email,
     password,
   }: {
     fullName: string;
-    phone: string;
     email: string;
     password: string;
   }): Promise<UserProfile | null> {
@@ -196,7 +201,8 @@ export const userService = {
       options: {
         data: {
           full_name: fullName,
-          phone,
+          phone: '',
+          address: '',
         },
       },
     });
@@ -226,7 +232,7 @@ export const userService = {
       return;
     }
 
-    const redirectTo = `${window.location.origin}/compte`;
+    const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {

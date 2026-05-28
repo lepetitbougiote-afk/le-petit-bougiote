@@ -1,22 +1,26 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.png';
 import { SEO } from '../../components/seo/SEO';
 import { useAuth } from '../../contexts/AuthContext';
+import { getPostLoginPath } from '../../lib/utils';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, user, loading } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  if (!loading && user) {
+    return <Navigate to={getPostLoginPath(user)} replace />;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const payload = {
       fullName: String(formData.get('fullName') ?? '').trim(),
-      phone: String(formData.get('phone') ?? '').trim(),
       email: String(formData.get('email') ?? '').trim(),
       password: String(formData.get('password') ?? ''),
     };
@@ -28,7 +32,7 @@ export default function RegisterPage() {
     try {
       const profile = await register(payload);
       if (profile) {
-        navigate(profile.role === 'admin' || profile.role === 'super_admin' ? '/admin/dashboard' : '/compte');
+        navigate(getPostLoginPath(profile));
         return;
       }
       setMessage('Votre compte a été créé. Vérifiez votre boîte mail si une confirmation est demandée.');
@@ -48,7 +52,6 @@ export default function RegisterPage() {
           <h1 className="mt-6 text-center text-3xl font-semibold text-slate-950">Créer un compte</h1>
           <form className="mt-8 grid gap-4" onSubmit={handleSubmit}>
             <input name="fullName" placeholder="Nom complet" className="rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" required />
-            <input name="phone" placeholder="Téléphone" className="rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" required />
             <input name="email" type="email" placeholder="Email" className="rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" required />
             <input name="password" placeholder="Mot de passe" type="password" className="rounded-2xl border border-brand-green/10 bg-brand-cream px-4 py-3 outline-none" required minLength={6} />
             {error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</p> : null}

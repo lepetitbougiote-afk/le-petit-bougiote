@@ -66,18 +66,20 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, full_name, phone, email)
+  insert into public.profiles (id, full_name, phone, email, address)
   values (
     new.id,
     coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name'),
     new.raw_user_meta_data ->> 'phone',
-    new.email
+    new.email,
+    new.raw_user_meta_data ->> 'address'
   )
   on conflict (id) do update
     set
       full_name = excluded.full_name,
       phone = excluded.phone,
       email = excluded.email,
+      address = coalesce(excluded.address, public.profiles.address),
       updated_at = timezone('utc', now());
 
   insert into public.user_roles (user_id, role)
@@ -99,6 +101,7 @@ create table if not exists public.profiles (
   full_name text,
   phone text,
   email text,
+  address text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );

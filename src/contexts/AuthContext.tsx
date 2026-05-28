@@ -10,7 +10,6 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<UserProfile>;
   register: (payload: {
     fullName: string;
-    phone: string;
     email: string;
     password: string;
   }) => Promise<UserProfile | null>;
@@ -72,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (payload: {
     fullName: string;
-    phone: string;
     email: string;
     password: string;
   }) => {

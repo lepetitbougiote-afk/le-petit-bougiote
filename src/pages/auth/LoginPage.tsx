@@ -1,14 +1,19 @@
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import logoImage from '../../assets/logo.png';
 import { SEO } from '../../components/seo/SEO';
 import { useAuth } from '../../contexts/AuthContext';
+import { getPostLoginPath } from '../../lib/utils';
 
 export default function LoginPage() {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user, loading } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  if (!loading && user) {
+    return <Navigate to={getPostLoginPath(user)} replace />;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,7 +25,7 @@ export default function LoginPage() {
     setError('');
     try {
       const profile = await login(email, password);
-      navigate(profile.role === 'admin' || profile.role === 'super_admin' ? '/admin/dashboard' : '/compte');
+      navigate(getPostLoginPath(profile));
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Connexion impossible.');
     } finally {
@@ -52,9 +57,6 @@ export default function LoginPage() {
             >
               Continuer avec Google
             </button>
-            <p className="mt-2 text-center text-xs text-slate-500">
-              Activation à finaliser côté Google et Supabase.
-            </p>
           </div>
           <p className="mt-6 text-center text-sm text-slate-600">Pas encore de compte ? <Link to="/inscription" className="font-semibold text-brand-green">Créer un compte</Link></p>
         </div>

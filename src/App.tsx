@@ -14,6 +14,7 @@ import MenuAdminPage from './pages/admin/MenuAdminPage';
 import OrdersAdminPage from './pages/admin/OrdersAdminPage';
 import ProductsAdminPage from './pages/admin/ProductsAdminPage';
 import SettingsAdminPage from './pages/admin/SettingsAdminPage';
+import AuthCallbackPage from './pages/auth/AuthCallbackPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import AboutPage from './pages/public/AboutPage';
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/commander" element={<Navigate to="/livraison" replace />} />
               <Route path="/panier" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/connexion" element={<LoginPage />} />
               <Route path="/inscription" element={<RegisterPage />} />
               <Route path="/compte" element={<AccountPage />} />

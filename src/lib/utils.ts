@@ -1,6 +1,13 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import type { ConfirmationStatus, DiningMode, FulfillmentType, OpeningHour, OrderStatus } from '../types';
+import type {
+  ConfirmationStatus,
+  DiningMode,
+  FulfillmentType,
+  OpeningHour,
+  OrderStatus,
+  UserProfile,
+} from '../types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -82,4 +89,28 @@ export function getTodayOpeningStatus(openingHours: OpeningHour[], now = new Dat
     return 'Fermé aujourd’hui';
   }
   return `Ouvert jusqu’à ${today.closesAt.replace(':', 'h')}`;
+}
+
+export function needsProfileCompletion(profile: Pick<UserProfile, 'phone' | 'address' | 'role'> | null | undefined) {
+  if (!profile) {
+    return false;
+  }
+
+  if (profile.role === 'admin' || profile.role === 'super_admin') {
+    return false;
+  }
+
+  return !profile.phone.trim() || !profile.address.trim();
+}
+
+export function getPostLoginPath(profile: Pick<UserProfile, 'phone' | 'address' | 'role'> | null | undefined) {
+  if (!profile) {
+    return '/connexion';
+  }
+
+  if (profile.role === 'admin' || profile.role === 'super_admin') {
+    return '/admin/dashboard';
+  }
+
+  return needsProfileCompletion(profile) ? '/compte?complete=1' : '/compte';
 }

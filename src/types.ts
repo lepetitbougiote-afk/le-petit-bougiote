@@ -241,6 +241,7 @@ export interface UserProfile {
   fullName: string;
   phone: string;
   email: string;
+  address: string;
   role?: UserRole;
 }
 
