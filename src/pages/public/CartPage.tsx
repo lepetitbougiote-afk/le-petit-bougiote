@@ -46,7 +46,12 @@ export default function CartPage() {
           <div className="mt-8 rounded-[2rem] bg-white p-10 text-center">
             <p className="text-lg font-semibold text-slate-950">Votre panier est vide.</p>
             <p className="mt-2 text-slate-600">{emptyText}</p>
-            <Link to={continuePath} className="mt-6 inline-flex rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">{continueLabel}</Link>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link to={continuePath} className="inline-flex rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">{continueLabel}</Link>
+              <Link to="/compte/commandes" className="inline-flex rounded-full border border-brand-green/10 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
+                Mes commandes
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -130,6 +135,9 @@ export default function CartPage() {
               </div>
               <div className="mt-6 grid gap-3">
                 <Link to={continuePath} className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">{continueLabel}</Link>
+                <Link to="/compte/commandes" className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">
+                  Mes commandes
+                </Link>
                 <Link to="/checkout" onClick={() => analyticsService.trackCheckoutStart({ item_count: items.length, subtotal })} className="rounded-full bg-brand-green px-5 py-3 text-center text-sm font-semibold text-white">
                   Passer au checkout
                 </Link>

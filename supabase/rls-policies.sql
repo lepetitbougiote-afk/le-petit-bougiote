@@ -56,7 +56,7 @@ create policy "public read option groups" on public.product_option_groups
 for select using (true);
 
 create policy "public read options" on public.product_options
-for select using (is_active = true);
+for select using (true);
 
 create policy "public read restaurant settings" on public.restaurant_settings
 for select using (true);

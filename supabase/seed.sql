@@ -34,15 +34,11 @@ insert into public.opening_hours (day_of_week, opens_at, closes_at, is_closed) v
 on conflict (day_of_week) do nothing;
 
 insert into public.categories (name, slug, description, sort_order, is_active) values
-  ('Burgers', 'burgers', 'Deux visuels clairs pour choisir ensuite le burger souhaité.', 1, true),
-  ('Salades & frites', 'salades-frites', 'Salades fraîches, frites et petits accompagnements.', 2, true),
-  ('Desserts', 'desserts', 'Une sélection de desserts servis à l’assiette, à choisir dans une seule carte dédiée.', 3, true),
-  ('Gourmandises', 'gourmandises', 'Cookies, viennoiseries et petites douceurs à choisir dans une seule carte dédiée.', 4, true),
-  ('Petit-déjeuner', 'petit-dejeuner', 'Des formules simples pour bien démarrer la journée.', 5, true),
-  ('Cafés classiques', 'cafes-classiques', 'Un groupe dédié aux cafés classiques.', 6, true),
-  ('Boissons gourmandes', 'boissons-gourmandes', 'Un groupe dédié aux boissons gourmandes.', 7, true),
-  ('Formule gourmande', 'formule-gourmande', 'Boisson gourmande au choix + pâtisserie éligible.', 8, true),
-  ('Boissons froides', 'boissons-froides', 'Eaux, sodas, jus et boissons fraîches.', 9, true)
+  ('Burgers', 'burgers', 'Un seul visuel clair pour choisir ensuite le burger qui vous correspond.', 1, true),
+  ('Accompagnements', 'accompagnements', 'Salades, frites et accompagnements à ajouter facilement selon l’envie.', 2, true),
+  ('Desserts & gourmandises', 'desserts-gourmandises', 'Desserts à l’assiette, gourmandises et viennoiseries regroupés dans un même univers sucré.', 3, true),
+  ('Boissons', 'boissons', 'Cafés classiques, boissons gourmandes et boissons froides réunis dans la même rubrique.', 4, true),
+  ('Petit-déjeuner & formules', 'petit-dejeuner-formules', 'Petit-déjeuner et formules à retrouver dans une sélection simple et pratique.', 5, true)
 on conflict (slug) do nothing;
 
 with ids as (
@@ -50,25 +46,25 @@ with ids as (
 )
 insert into public.products (category_id, name, slug, description, price, price_label, product_type, configurator_key, is_available, availability_note, is_active, tags, sort_order)
 values
-  ((select id from ids where slug = 'burgers'), 'Burgers bœuf', 'burgers-boeuf', 'Choisissez ensuite Classic, Alpin, Magret, Texan, Chèvre, Bombay, Veggie ou Cheese.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-beef', true, null, true, '{"group","boeuf"}', 1),
-  ((select id from ids where slug = 'burgers'), 'Burgers poulet', 'burgers-poulet', 'Choisissez ensuite Cajun ou Chicken, en burger seul ou en menu +3 €.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-chicken', true, null, true, '{"group","poulet"}', 2),
-  ((select id from ids where slug = 'salades-frites'), 'César', 'cesar', 'Iceberg, croûtons, poulet, copeaux de parmesan, oignon, sauce césar.', 10.90, null, 'simple', null, true, null, true, '{"salade"}', 1),
-  ((select id from ids where slug = 'salades-frites'), 'Médit', 'medit', 'Feuille, aubergine, feta, groseilles, noix, vinaigre balsamique.', 10.90, null, 'simple', null, true, null, true, '{"salade"}', 2),
-  ((select id from ids where slug = 'salades-frites'), 'Frites', 'frites', 'Frites maison.', 3.00, null, 'simple', null, true, null, true, '{"accompagnement"}', 3),
-  ((select id from ids where slug = 'salades-frites'), 'Petite salade', 'petite-salade', 'Salade, tomates, oignons frits.', 1.50, null, 'simple', null, true, null, true, '{"accompagnement"}', 4),
-  ((select id from ids where slug = 'desserts'), 'Desserts', 'desserts', 'Choisissez ensuite cheesecake, carrot cake, flan coco choco, crumble fruits rouges ou apple tart.', 3.90, 'À partir de 3,90 €', 'configurable', 'desserts', true, null, true, '{"group","dessert"}', 1),
-  ((select id from ids where slug = 'gourmandises'), 'Gourmandises', 'gourmandises', 'Choisissez ensuite cookie, brownie, croissant, pain au chocolat, muffin, donut ou browkie.', 2.40, 'À partir de 2,40 €', 'configurable', 'gourmandises', true, null, true, '{"group","gourmandise"}', 1),
-  ((select id from ids where slug = 'petit-dejeuner'), 'Formule express', 'formule-express', 'Expresso + 1 viennoiserie.', 2.20, null, 'simple', null, true, null, true, '{"pdj"}', 1),
-  ((select id from ids where slug = 'petit-dejeuner'), 'Formule classic', 'formule-classic', 'Double expresso / café crème / thé + 1 viennoiserie.', 3.20, null, 'simple', null, true, null, true, '{"pdj"}', 2),
-  ((select id from ids where slug = 'petit-dejeuner'), 'Formule PDJ', 'formule-pdj', 'Double expresso / café crème / thé + 1 viennoiserie + jus d’orange.', 4.80, null, 'simple', null, true, null, true, '{"pdj"}', 3),
-  ((select id from ids where slug = 'cafes-classiques'), 'Cafés classiques', 'cafes-classiques', 'Choisissez ensuite votre café classique.', 1.50, 'À partir de 1,50 €', 'configurable', 'cafes-classiques', true, null, true, '{"group","cafe"}', 1),
-  ((select id from ids where slug = 'boissons-gourmandes'), 'Boissons gourmandes', 'boissons-gourmandes', 'Choisissez votre boisson gourmande préférée.', 3.50, 'À partir de 3,50 €', 'configurable', 'boissons-gourmandes', true, null, true, '{"group","boisson-gourmande"}', 1),
-  ((select id from ids where slug = 'formule-gourmande'), 'Formule gourmande', 'formule-gourmande', 'Boisson gourmande au choix + pâtisserie éligible.', 5.90, null, 'configurable', 'formule-gourmande', true, null, true, '{"group","formule"}', 1),
-  ((select id from ids where slug = 'boissons-froides'), 'Eau', 'eau', 'Bouteille d’eau.', 1.00, null, 'simple', null, true, null, true, '{"frais"}', 1),
-  ((select id from ids where slug = 'boissons-froides'), 'Eau gazeuse', 'eau-gazeuse', 'Eau pétillante.', 1.50, null, 'simple', null, true, null, true, '{"frais"}', 2),
-  ((select id from ids where slug = 'boissons-froides'), 'Soda', 'soda', 'Sélection de sodas.', 2.00, null, 'simple', null, true, null, true, '{"soft"}', 3),
-  ((select id from ids where slug = 'boissons-froides'), 'Jus', 'jus', 'Jus de fruits.', 2.50, null, 'simple', null, true, null, true, '{"fruit"}', 4),
-  ((select id from ids where slug = 'boissons-froides'), 'Bière sans alcool', 'biere-sans-alcool', 'Alternative légère.', 3.00, null, 'simple', null, true, null, true, '{"sans-alcool"}', 5)
+  ((select id from ids where slug = 'burgers'), 'Burgers', 'burgers-boeuf', 'Choisissez ensuite Classic, Alpin, Magret, Texan, Chèvre, Bombay, Veggie, Cheese, Cajun ou Chicken.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-beef', true, null, true, '{"group","burger"}', 1),
+  ((select id from ids where slug = 'burgers'), 'Burgers poulet', 'burgers-poulet', 'Ancien groupe fusionné dans la carte burgers.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-chicken', false, null, false, '{"group","poulet"}', 2),
+  ((select id from ids where slug = 'accompagnements'), 'César', 'cesar', 'Iceberg, croûtons, poulet, copeaux de parmesan, oignon, sauce césar.', 10.90, null, 'simple', null, true, null, true, '{"salade"}', 1),
+  ((select id from ids where slug = 'accompagnements'), 'Médit', 'medit', 'Feuille, aubergine, feta, groseilles, noix, vinaigre balsamique.', 10.90, null, 'simple', null, true, null, true, '{"salade"}', 2),
+  ((select id from ids where slug = 'accompagnements'), 'Frites', 'frites', 'Frites maison.', 3.00, null, 'simple', null, true, null, true, '{"accompagnement"}', 3),
+  ((select id from ids where slug = 'accompagnements'), 'Petite salade', 'petite-salade', 'Salade, tomates, oignons frits.', 1.50, null, 'simple', null, true, null, true, '{"accompagnement"}', 4),
+  ((select id from ids where slug = 'desserts-gourmandises'), 'Desserts', 'desserts', 'Choisissez ensuite cheesecake, carrot cake, flan coco choco, crumble fruits rouges ou apple tart.', 3.90, 'À partir de 3,90 €', 'configurable', 'desserts', true, null, true, '{"group","dessert"}', 1),
+  ((select id from ids where slug = 'desserts-gourmandises'), 'Gourmandises', 'gourmandises', 'Choisissez ensuite cookie, brownie, croissant, pain au chocolat, muffin, donut ou browkie.', 2.40, 'À partir de 2,40 €', 'configurable', 'gourmandises', true, null, true, '{"group","gourmandise"}', 2),
+  ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule express', 'formule-express', 'Expresso + 1 viennoiserie.', 2.20, null, 'simple', null, true, null, true, '{"pdj"}', 1),
+  ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule classic', 'formule-classic', 'Double expresso / café crème / thé + 1 viennoiserie.', 3.20, null, 'simple', null, true, null, true, '{"pdj"}', 2),
+  ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule PDJ', 'formule-pdj', 'Double expresso / café crème / thé + 1 viennoiserie + jus d’orange.', 4.80, null, 'simple', null, true, null, true, '{"pdj"}', 3),
+  ((select id from ids where slug = 'boissons'), 'Cafés classiques', 'cafes-classiques', 'Choisissez ensuite votre café classique.', 1.50, 'À partir de 1,50 €', 'configurable', 'cafes-classiques', true, null, true, '{"group","cafe"}', 1),
+  ((select id from ids where slug = 'boissons'), 'Boissons gourmandes', 'boissons-gourmandes', 'Choisissez votre boisson gourmande préférée.', 3.50, 'À partir de 3,50 €', 'configurable', 'boissons-gourmandes', true, null, true, '{"group","boisson-gourmande"}', 2),
+  ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule gourmande', 'formule-gourmande', 'Boisson gourmande au choix + pâtisserie éligible.', 5.90, null, 'configurable', 'formule-gourmande', true, null, true, '{"group","formule"}', 4),
+  ((select id from ids where slug = 'boissons'), 'Eau', 'eau', 'Bouteille d’eau.', 1.00, null, 'simple', null, true, null, true, '{"frais"}', 3),
+  ((select id from ids where slug = 'boissons'), 'Eau gazeuse', 'eau-gazeuse', 'Eau pétillante.', 1.50, null, 'simple', null, true, null, true, '{"frais"}', 4),
+  ((select id from ids where slug = 'boissons'), 'Soda', 'soda', 'Sélection de sodas.', 2.00, null, 'simple', null, true, null, true, '{"soft"}', 5),
+  ((select id from ids where slug = 'boissons'), 'Jus', 'jus', 'Jus de fruits.', 2.50, null, 'simple', null, true, null, true, '{"fruit"}', 6),
+  ((select id from ids where slug = 'boissons'), 'Bière sans alcool', 'biere-sans-alcool', 'Alternative légère.', 3.00, null, 'simple', null, true, null, true, '{"sans-alcool"}', 7)
 on conflict (slug) do nothing;
 
 with products_cte as (
@@ -126,6 +122,8 @@ from (
   union all select id, 'Bombay', 'Poulet mariné, sauce tandoori.', 11.90, '{}', 6 from burger_beef_group where name = 'Votre burger'
   union all select id, 'Veggie', 'Aubergine, tomates confites, chèvre.', 12.90, '{}', 7 from burger_beef_group where name = 'Votre burger'
   union all select id, 'Cheese', 'Boeuf, cheddar et sauce maison.', 8.90, '{}', 8 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Cajun', 'Poulet, comté, sauce mayo cajun.', 11.90, '{}', 9 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Chicken', 'Poulet, cheddar et sauce maison.', 8.90, '{}', 10 from burger_beef_group where name = 'Votre burger'
   union all select id, 'Burger seul', null, 0, '{"kind":"service-format"}', 1 from burger_beef_group where name = 'Format'
   union all select id, 'Menu +3 €', 'Frites + boisson', 3.00, '{"kind":"service-format"}', 2 from burger_beef_group where name = 'Format'
   union all select id, 'Cajun', 'Poulet, comté, sauce mayo cajun.', 11.90, '{}', 1 from burger_chicken_group where name = 'Votre burger'

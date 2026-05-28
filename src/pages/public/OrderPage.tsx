@@ -24,7 +24,7 @@ export default function OrderPage() {
           <SectionHeading
             eyebrow="Livraison"
             title="Une livraison locale, simple et attentive"
-            description={`Le Petit Bougiote propose une livraison locale sur Béziers avec un tarif fixe de ${formatPrice(DELIVERY_FEE)}. Pour rester proche du quartier et soutenir les acteurs locaux, la livraison s’appuie sur une organisation de proximité, avec une attention particulière à la qualité de service.`}
+            description={`Le Petit Bougiote propose une livraison locale sur Béziers avec un tarif fixe de ${formatPrice(DELIVERY_FEE)}. Pour faire vivre l’activité locale et participer au dynamisme biterrois, le restaurant a choisi de s’appuyer sur une micro-entreprise locale, avec une attention particulière portée à la qualité de service.`}
           />
           <div className="mt-8 flex flex-wrap gap-2">
             <StatusBadge tone="success">Béziers</StatusBadge>
@@ -50,7 +50,7 @@ export default function OrderPage() {
                 {
                   icon: MapPin,
                   title: 'Service de proximité',
-                  text: 'Le but est de garder un traitement plus attentif des commandes tout en restant proche du quartier.',
+                  text: 'Le choix d’une micro-entreprise biterroise permet de soutenir le tissu local tout en gardant un traitement plus attentif des commandes.',
                 },
                 {
                   icon: Phone,

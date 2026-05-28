@@ -78,6 +78,9 @@ export default function ContactPage() {
               <Link to="/livraison" className="rounded-full bg-brand-wood px-5 py-3 text-center text-sm font-semibold text-white sm:col-span-2">
                 Livraison
               </Link>
+              <Link to="/compte/commandes" className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 sm:col-span-2">
+                Mes commandes
+              </Link>
             </div>
             <div className="rounded-[1.8rem] bg-white p-6">
               <div className="flex items-center gap-4">

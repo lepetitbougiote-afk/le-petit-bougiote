@@ -23,6 +23,18 @@ export function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const { totalItems } = useCart();
   const { user } = useAuth();
+  const accountTarget =
+    user?.role === 'admin' || user?.role === 'super_admin'
+      ? '/admin/dashboard'
+      : user
+        ? '/compte/commandes'
+        : '/connexion';
+  const accountLabel =
+    user?.role === 'admin' || user?.role === 'super_admin'
+      ? 'Admin'
+      : user
+        ? 'Mes commandes'
+        : 'Connexion';
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
@@ -67,11 +79,11 @@ export function PublicNavbar() {
             {totalItems > 0 ? <span className="ml-2 rounded-full bg-brand-green px-2 py-0.5 text-xs text-white">{totalItems}</span> : null}
           </Link>
           <Link
-            to={user?.role === 'admin' || user?.role === 'super_admin' ? '/admin/dashboard' : user ? '/compte' : '/connexion'}
+            to={accountTarget}
             className="inline-flex h-11 items-center justify-center rounded-full border border-brand-green/15 px-4 text-sm font-semibold text-slate-700 hover:border-brand-green/35"
           >
             <User className="mr-2 h-4 w-4" />
-            {user?.role === 'admin' || user?.role === 'super_admin' ? 'Admin' : user ? 'Compte' : 'Connexion'}
+            {accountLabel}
           </Link>
           <a
             href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
@@ -137,11 +149,11 @@ export function PublicNavbar() {
                 Panier {totalItems > 0 ? `(${totalItems})` : ''}
               </Link>
               <Link
-                to={user?.role === 'admin' || user?.role === 'super_admin' ? '/admin/dashboard' : user ? '/compte' : '/connexion'}
+                to={accountTarget}
                 onClick={() => setOpen(false)}
                 className="rounded-2xl border border-brand-border bg-white px-4 py-3.5 text-center text-sm font-semibold text-slate-700 shadow-sm"
               >
-                {user?.role === 'admin' || user?.role === 'super_admin' ? 'Admin' : user ? 'Compte' : 'Connexion'}
+                {accountLabel}
               </Link>
             </div>
             <div className="grid grid-cols-1 gap-3">

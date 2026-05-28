@@ -9,14 +9,10 @@ export type DayName =
 
 export type CategorySlug =
   | 'burgers'
-  | 'salades-frites'
-  | 'desserts'
-  | 'gourmandises'
-  | 'petit-dejeuner'
-  | 'cafes-classiques'
-  | 'boissons-gourmandes'
-  | 'formule-gourmande'
-  | 'boissons-froides';
+  | 'accompagnements'
+  | 'desserts-gourmandises'
+  | 'boissons'
+  | 'petit-dejeuner-formules';
 
 export type GalleryCategory =
   | 'Burgers'

@@ -1,13 +1,16 @@
 import { mockOrders } from '../data/mockOrders';
+import { products } from '../data/menu';
 import { currentUser } from '../data/mockUsers';
 import { simulateAsync } from '../lib/dataProvider';
 import { supabaseClient } from '../lib/supabaseClient';
 import type { CheckoutPayload, ConfirmationStatus, Order, OrderStatus, PaymentStatus } from '../types';
 
 let orderStore = [...mockOrders];
+const localProductById = new Map(products.map((product) => [product.id, product]));
 
 type SupabaseOrderItemRow = {
   id: string;
+  order_id?: string;
   product_id: string | null;
   product_name_snapshot: string;
   unit_price_snapshot: number;
@@ -46,7 +49,7 @@ type SupabaseOrderRow = {
   order_items?: SupabaseOrderItemRow[] | null;
 };
 
-function mapOrder(row: SupabaseOrderRow): Order {
+function mapOrder(row: SupabaseOrderRow, orderItems?: SupabaseOrderItemRow[]): Order {
   return {
     id: row.id,
     fulfillmentType: row.fulfillment_type,
@@ -74,7 +77,7 @@ function mapOrder(row: SupabaseOrderRow): Order {
     notes: row.notes ?? undefined,
     subtotal: Number(row.subtotal ?? 0),
     total: Number(row.total ?? 0),
-    items: (row.order_items ?? []).map((item) => ({
+    items: (orderItems ?? row.order_items ?? []).map((item) => ({
       productId: item.product_id,
       productNameSnapshot: item.product_name_snapshot,
       unitPriceSnapshot: Number(item.unit_price_snapshot ?? 0),
@@ -102,6 +105,67 @@ async function getAuthOrderScope() {
   };
 }
 
+async function getRemoteProductIdMap(productIds: Array<string | null | undefined>) {
+  if (!supabaseClient) {
+    return new Map<string, string>();
+  }
+
+  const localProducts = Array.from(new Set(productIds.filter(Boolean) as string[]))
+    .map((productId) => localProductById.get(productId))
+    .filter(Boolean);
+
+  if (localProducts.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const slugs = localProducts.map((product) => product.slug);
+  const configuratorKeys = localProducts
+    .map((product) => product.configuratorKey)
+    .filter(Boolean) as string[];
+
+  const remoteProductMap = new Map<string, string>();
+
+  if (slugs.length > 0) {
+    const { data } = await supabaseClient
+      .from('products')
+      .select('id, slug, configurator_key')
+      .in('slug', slugs);
+
+    (data ?? []).forEach((row) => {
+      remoteProductMap.set(row.slug, row.id);
+      if (row.configurator_key) {
+        remoteProductMap.set(row.configurator_key, row.id);
+      }
+    });
+  }
+
+  if (configuratorKeys.length > 0) {
+    const { data } = await supabaseClient
+      .from('products')
+      .select('id, slug, configurator_key')
+      .in('configurator_key', configuratorKeys);
+
+    (data ?? []).forEach((row) => {
+      remoteProductMap.set(row.slug, row.id);
+      if (row.configurator_key) {
+        remoteProductMap.set(row.configurator_key, row.id);
+      }
+    });
+  }
+
+  return localProducts.reduce((accumulator, product) => {
+    const remoteId =
+      remoteProductMap.get(product.configuratorKey ?? '') ??
+      remoteProductMap.get(product.slug);
+
+    if (remoteId) {
+      accumulator.set(product.id, remoteId);
+    }
+
+    return accumulator;
+  }, new Map<string, string>());
+}
+
 const ORDER_SELECT = `
   id,
   customer_name,
@@ -127,18 +191,48 @@ const ORDER_SELECT = `
   last_customer_notification_at,
   subtotal,
   total,
-  created_at,
-  order_items (
-    id,
-    product_id,
-    product_name_snapshot,
-    unit_price_snapshot,
-    quantity,
-    item_notes,
-    selected_options,
-    total
-  )
+  created_at
 `;
+
+const ORDER_ITEMS_SELECT = `
+  id,
+  order_id,
+  product_id,
+  product_name_snapshot,
+  unit_price_snapshot,
+  quantity,
+  item_notes,
+  selected_options,
+  total,
+  created_at
+`;
+
+async function fetchOrderItemsByOrderIds(orderIds: string[]) {
+  if (!supabaseClient || orderIds.length === 0) {
+    return new Map<string, SupabaseOrderItemRow[]>();
+  }
+
+  const { data, error } = await supabaseClient
+    .from('order_items')
+    .select(ORDER_ITEMS_SELECT)
+    .in('order_id', orderIds)
+    .order('created_at', { ascending: true });
+
+  if (error || !data) {
+    return new Map<string, SupabaseOrderItemRow[]>();
+  }
+
+  return (data as SupabaseOrderItemRow[]).reduce((accumulator, item) => {
+    const orderId = item.order_id;
+    if (!orderId) {
+      return accumulator;
+    }
+    const existing = accumulator.get(orderId) ?? [];
+    existing.push(item);
+    accumulator.set(orderId, existing);
+    return accumulator;
+  }, new Map<string, SupabaseOrderItemRow[]>());
+}
 
 async function fetchOrders(query: {
   order: (column: string, options: { ascending: boolean }) => PromiseLike<{
@@ -152,7 +246,9 @@ async function fetchOrders(query: {
     return null;
   }
 
-  return (data as SupabaseOrderRow[]).map(mapOrder);
+  const rows = data as SupabaseOrderRow[];
+  const orderItemsByOrderId = await fetchOrderItemsByOrderIds(rows.map((row) => row.id));
+  return rows.map((row) => mapOrder(row, orderItemsByOrderId.get(row.id)));
 }
 
 function createOrderId(prefix: 'LIV' | 'CLC') {
@@ -207,6 +303,7 @@ export const orderService = {
 
     if (supabaseClient) {
       const authScope = await getAuthOrderScope();
+      const remoteProductIds = await getRemoteProductIdMap(newOrder.items.map((item) => item.productId));
       const { data: insertedOrder, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
@@ -238,7 +335,7 @@ export const orderService = {
         const { error: itemsError } = await supabaseClient.from('order_items').insert(
           newOrder.items.map((item) => ({
             order_id: insertedOrder.id,
-            product_id: item.productId,
+            product_id: item.productId ? remoteProductIds.get(item.productId) ?? null : null,
             product_name_snapshot: item.productNameSnapshot,
             unit_price_snapshot: item.unitPriceSnapshot,
             quantity: item.quantity,
@@ -324,47 +421,12 @@ export const orderService = {
         .from('orders')
         .update({ status })
         .eq('id', orderId)
-        .select(`
-          id,
-          customer_name,
-          customer_phone,
-          customer_email,
-          status,
-          fulfillment_type,
-          dining_mode,
-          order_source,
-          delivery_address,
-          delivery_fee,
-          desired_time,
-          confirmation_status,
-          proposed_time,
-          customer_confirmation_required,
-          customer_confirmed_at,
-          restaurant_note,
-          customer_note,
-          notes,
-          payment_status,
-          public_confirmation_token,
-          confirmation_link_expires_at,
-          last_customer_notification_at,
-          subtotal,
-          total,
-          created_at,
-          order_items (
-            id,
-            product_id,
-            product_name_snapshot,
-            unit_price_snapshot,
-            quantity,
-            item_notes,
-            selected_options,
-            total
-          )
-        `)
+        .select(ORDER_SELECT)
         .maybeSingle();
 
       if (!error && data) {
-        return simulateAsync(mapOrder(data as SupabaseOrderRow), 120);
+        const orderItemsByOrderId = await fetchOrderItemsByOrderIds([orderId]);
+        return simulateAsync(mapOrder(data as SupabaseOrderRow, orderItemsByOrderId.get(orderId)), 120);
       }
     }
 
@@ -376,6 +438,19 @@ export const orderService = {
 
   async cancelOrder(orderId: string): Promise<Order | undefined> {
     return this.updateOrderStatus(orderId, 'cancelled');
+  },
+
+  async deleteOrder(orderId: string): Promise<boolean> {
+    if (supabaseClient) {
+      const { error } = await supabaseClient.from('orders').delete().eq('id', orderId);
+      if (!error) {
+        return simulateAsync(true, 120);
+      }
+    }
+
+    const initialLength = orderStore.length;
+    orderStore = orderStore.filter((order) => order.id !== orderId);
+    return simulateAsync(orderStore.length < initialLength, 120);
   },
 
   async updateOrderConfirmationByAdmin(
@@ -406,7 +481,8 @@ export const orderService = {
         .maybeSingle();
 
       if (!error && data) {
-        return simulateAsync(mapOrder(data as SupabaseOrderRow), 120);
+        const orderItemsByOrderId = await fetchOrderItemsByOrderIds([orderId]);
+        return simulateAsync(mapOrder(data as SupabaseOrderRow, orderItemsByOrderId.get(orderId)), 120);
       }
     }
 
@@ -464,7 +540,8 @@ export const orderService = {
         .maybeSingle();
 
       if (!error && data) {
-        return simulateAsync(mapOrder(data as SupabaseOrderRow), 120);
+        const orderItemsByOrderId = await fetchOrderItemsByOrderIds([orderId]);
+        return simulateAsync(mapOrder(data as SupabaseOrderRow, orderItemsByOrderId.get(orderId)), 120);
       }
     }
 

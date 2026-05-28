@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { OrderModeSelector, type OrderModeChoice } from '../../components/public/OrderModeSelector';
 import { ProductConfiguratorModal } from '../../components/public/ProductConfiguratorModal';
-import { ProductCard } from '../../components/public/ProductCard';
 import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
@@ -15,9 +14,6 @@ import { getTodayOpeningStatus } from '../../lib/utils';
 import { analyticsService } from '../../services/analyticsService';
 import type { Product } from '../../types';
 
-const featuredProducts = products.filter((product) =>
-  ['prod-group-burgers-beef', 'prod-petite-salade', 'prod-group-desserts'].includes(product.id),
-);
 const burgerProduct = products.find((product) => product.id === 'prod-group-burgers-beef') ?? null;
 const dessertProduct = products.find((product) => product.id === 'prod-group-desserts') ?? null;
 const saladProduct = products.find((product) => product.id === 'prod-medit') ?? null;
@@ -95,16 +91,23 @@ export default function HomePage() {
       ) : null}
 
       <section className="relative isolate overflow-hidden">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 z-0">
           <img
             src={brandAssets.heroImage}
             alt="Le Petit Bougiote Coffee & Burger"
             className="h-full w-full object-cover object-[56%_center] md:object-[66%_center] lg:object-[76%_center]"
           />
-          <div className="absolute inset-0 bg-[linear-gradient(112deg,rgba(11,14,12,0.72),rgba(27,43,33,0.48),rgba(31,22,18,0.3))]" />
+          <div className="absolute inset-0 z-[1] bg-[linear-gradient(112deg,rgba(11,14,12,0.72),rgba(27,43,33,0.48),rgba(31,22,18,0.3))]" />
+        </div>
+        <div className="pointer-events-none absolute inset-0 z-[2]">
+          <img
+            src={brandAssets.heroTransparentLogoImage}
+            alt="Le Petit Bougiote Coffee & Burger"
+            className="absolute left-1/2 top-[14%] h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 object-contain opacity-[0.72] drop-shadow-[0_24px_40px_rgba(0,0,0,0.4)] sm:top-[55%] sm:h-[28rem] sm:w-[28rem] lg:top-[52%] lg:h-[50rem] lg:w-[50rem] xl:h-[58rem] xl:w-[58rem]"
+          />
         </div>
         <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:py-16 lg:grid-cols-[1.12fr_0.88fr] lg:gap-12 lg:px-8 lg:py-24">
-          <Reveal className="max-w-3xl">
+          <Reveal className="relative z-10 max-w-3xl">
             <div className="flex flex-wrap gap-2">
               <StatusBadge tone="success">Sur place</StatusBadge>
               <StatusBadge tone="success">Livraison locale</StatusBadge>
@@ -112,19 +115,9 @@ export default function HomePage() {
               <StatusBadge>{business.brandLine}</StatusBadge>
               <StatusBadge>{getTodayOpeningStatus(business.openingHours)}</StatusBadge>
             </div>
-            <img
-              src={brandAssets.logoImage}
-              alt="Le Petit Bougiote Coffee & Burger"
-              className="mt-2 hidden h-56 w-56 rounded-full object-cover shadow-[0_24px_40px_-20px_rgba(0,0,0,0.5)] lg:block"
-            />
             <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:mt-5 lg:text-[5.1rem] lg:leading-[0.95]">
               Burgers, cafés & douceurs dans une ambiance familiale à Béziers
             </h1>
-            <img
-              src={brandAssets.logoImage}
-              alt="Le Petit Bougiote Coffee & Burger"
-              className="mt-6 h-44 w-44 rounded-full object-cover shadow-[0_24px_40px_-20px_rgba(0,0,0,0.5)] sm:h-48 sm:w-48 lg:hidden"
-            />
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/84">
               Le Petit Bougiote vous accueille rue Diderot avec des burgers généreux, des cafés, des formules petit-déjeuner, des desserts et une ambiance simple, propre et conviviale.
             </p>
@@ -164,7 +157,7 @@ export default function HomePage() {
             </div>
           </Reveal>
 
-          <Reveal className="grid gap-4 self-end lg:pt-8" delay={120}>
+          <Reveal className="relative z-10 grid gap-4 self-end lg:pt-8" delay={120}>
             {burgerProduct ? (
               <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))] p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/65">Produit populaire</p>
@@ -254,34 +247,6 @@ export default function HomePage() {
         </div>
       </Reveal>
 
-      <Reveal className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="À découvrir"
-          title="Une carte pensée pour composer facilement votre commande"
-          description="Commencez par un burger avec menu, ajoutez une salade ou une petite salade, puis terminez avec un dessert: le panier se construit plus naturellement, même depuis l’accueil."
-        />
-        <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {featuredProducts.map((product) => (
-            <div key={product.id}>
-              <ProductCard
-                product={product}
-                compact
-                onAdd={
-                  product.productType === 'simple'
-                    ? (currentProduct) => openModeDialog({ type: 'add', product: currentProduct })
-                    : undefined
-                }
-                onOpen={
-                  product.productType === 'configurable'
-                    ? (currentProduct) => openModeDialog({ type: 'open', product: currentProduct })
-                    : undefined
-                }
-              />
-            </div>
-          ))}
-        </div>
-      </Reveal>
-
       <Reveal className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
         <div className="rounded-[2rem] bg-white p-8 shadow-[0_18px_45px_-30px_rgba(40,55,40,0.35)]">
           <SectionHeading
@@ -326,8 +291,8 @@ export default function HomePage() {
         product={selectedProduct}
         open={Boolean(selectedProduct)}
         onClose={() => setSelectedProduct(null)}
-        onConfirm={(item) => {
-          addCustomItem(item);
+        onConfirm={(items) => {
+          items.forEach((item) => addCustomItem(item));
         }}
       />
     </>

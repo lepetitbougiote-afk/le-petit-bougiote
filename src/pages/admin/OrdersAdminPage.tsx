@@ -121,6 +121,18 @@ export default function OrdersAdminPage() {
     setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
   }
 
+  async function handleDelete(orderId: string) {
+    const confirmed = window.confirm('Supprimer définitivement cette commande ?');
+    if (!confirmed) {
+      return;
+    }
+
+    const deleted = await orderService.deleteOrder(orderId);
+    if (deleted) {
+      setOrders((current) => current.filter((order) => order.id !== orderId));
+    }
+  }
+
   return (
     <section>
       <h1 className="text-3xl font-semibold text-slate-950">Commandes</h1>
@@ -163,10 +175,34 @@ export default function OrdersAdminPage() {
                   </StatusBadge>
                 ) : null}
               </div>
-              <div className="mt-5 grid gap-2 text-sm text-slate-600">
-                {order.items.map((item, index) => (
-                  <p key={`${order.id}-${index}`}>{item.quantity} × {item.productNameSnapshot} • {formatPrice(item.total)}</p>
-                ))}
+              <div className="mt-5 rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Détail de la commande</p>
+                <div className="mt-4 grid gap-3">
+                  {order.items.length === 0 ? (
+                    <div className="rounded-2xl bg-white px-4 py-4 text-sm text-slate-500">
+                      Aucun article n’a pu être remonté pour cette commande.
+                    </div>
+                  ) : (
+                    order.items.map((item, index) => (
+                      <div key={`${order.id}-${index}`} className="rounded-2xl bg-white px-4 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950">
+                              {item.quantity} × {item.productNameSnapshot}
+                            </p>
+                            {item.selectedOptions?.length ? (
+                              <p className="mt-1 text-sm text-slate-600">
+                                {item.selectedOptions.map((option) => option.label).join(' • ')}
+                              </p>
+                            ) : null}
+                            {item.itemNotes ? <p className="mt-1 text-sm text-slate-500">Note produit: {item.itemNotes}</p> : null}
+                          </div>
+                          <p className="text-sm font-semibold text-slate-950">{formatPrice(item.total)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
               {order.notes ? <p className="mt-4 text-sm text-slate-600">Note: {order.notes}</p> : null}
               {order.fulfillmentType === 'delivery' ? (
@@ -233,6 +269,13 @@ export default function OrdersAdminPage() {
                     {getOrderStatusLabel(status)}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => void handleDelete(order.id)}
+                  className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700"
+                >
+                  Supprimer
+                </button>
               </div>
             </article>
           ))

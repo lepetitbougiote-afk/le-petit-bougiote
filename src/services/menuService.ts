@@ -4,6 +4,7 @@ import { supabaseClient } from '../lib/supabaseClient';
 import type { Category, Product, ProductConfigurator } from '../types';
 
 let productStore = [...products];
+let configuratorStore = structuredClone(productConfiguratorMap) as Record<string, ProductConfigurator>;
 
 const localProductBySlug = new Map(products.map((product) => [product.slug, product]));
 const localCategoryBySlug = new Map(categories.map((category) => [category.slug, category]));
@@ -167,7 +168,6 @@ async function getSupabaseConfigurator(configuratorKey: string): Promise<Product
     .from('product_options')
     .select('id, option_group_id, name, description, price, metadata, is_active, sort_order')
     .in('option_group_id', groupIds)
-    .eq('is_active', true)
     .order('sort_order', { ascending: true });
 
   if (optionsError) {
@@ -176,6 +176,7 @@ async function getSupabaseConfigurator(configuratorKey: string): Promise<Product
 
   const fallbackConfigurator = productConfiguratorMap[configuratorKey];
   const fallbackProduct = products.find((item) => item.configuratorKey === configuratorKey);
+  const fallbackGroups = fallbackConfigurator?.choiceGroups ?? [];
 
   return {
     key: configuratorKey,
@@ -183,22 +184,39 @@ async function getSupabaseConfigurator(configuratorKey: string): Promise<Product
     title: productRow.name,
     description: productRow.description ?? fallbackConfigurator?.description ?? '',
     quantityEnabled: true,
-    choiceGroups: groups.map((group) => ({
-      id: group.id,
-      name: group.name,
-      helperText: group.helper_text ?? undefined,
-      required: group.is_required,
-      sortOrder: group.sort_order,
-      options: (options ?? [])
-        .filter((option) => option.option_group_id === group.id)
-        .map((option) => ({
-          id: option.id,
-          name: option.name,
-          description: option.description ?? undefined,
-          price: Number(option.price ?? 0),
-          meta: option.metadata ?? undefined,
-        })),
-    })),
+    // Keep stable local ids so the ordering UI can target the same groups/options
+    // whether data comes from mock data or Supabase.
+    choiceGroups: groups.map((group) => {
+      const fallbackGroup =
+        fallbackGroups.find((item) => item.sortOrder === group.sort_order) ??
+        fallbackGroups.find((item) => item.name === group.name);
+
+      return {
+        id: fallbackGroup?.id ?? group.id,
+        name: group.name,
+        helperText: group.helper_text ?? fallbackGroup?.helperText ?? undefined,
+        required: group.is_required,
+        sortOrder: group.sort_order,
+        options: (options ?? [])
+          .filter((option) => option.option_group_id === group.id)
+          .map((option) => {
+            const fallbackOption = fallbackGroup?.options.find((item) => item.name === option.name);
+
+            return {
+              id: fallbackOption?.id ?? option.id,
+              name: option.name,
+              description: option.description ?? fallbackOption?.description ?? undefined,
+              price: Number(option.price ?? 0),
+              isActive: option.is_active,
+              meta: {
+                ...(fallbackOption?.meta ?? {}),
+                ...((option.metadata as Record<string, string | number | boolean | null> | null) ?? {}),
+                remoteOptionId: option.id,
+              },
+            };
+          }),
+      };
+    }),
   };
 }
 
@@ -243,7 +261,7 @@ export const menuService = {
       return remoteConfigurator;
     }
 
-    return simulateAsync(productConfiguratorMap[configuratorKey]);
+    return simulateAsync(configuratorStore[configuratorKey]);
   },
 
   async createProduct(product: Product): Promise<Product> {
@@ -319,5 +337,72 @@ export const menuService = {
 
   async updateProductAvailability(productId: string, isAvailable: boolean, availabilityNote?: string): Promise<Product | undefined> {
     return this.updateProduct(productId, { isAvailable, availabilityNote });
+  },
+
+  async updateProductChoiceAvailability(
+    configuratorKey: string,
+    optionId: string,
+    isActive: boolean,
+    availabilityNote?: string,
+  ): Promise<ProductConfigurator | undefined> {
+    const currentConfigurator =
+      (await getSupabaseConfigurator(configuratorKey)) ??
+      configuratorStore[configuratorKey];
+
+    if (!currentConfigurator) {
+      return undefined;
+    }
+
+    const nextGroups = currentConfigurator.choiceGroups.map((group) => ({
+      ...group,
+      options: group.options.map((option) => {
+        if (option.id !== optionId) {
+          return option;
+        }
+
+        return {
+          ...option,
+          isActive,
+          meta: {
+            ...(option.meta ?? {}),
+            availabilityNote: isActive ? null : availabilityNote ?? null,
+          },
+        };
+      }),
+    }));
+
+    const updatedConfigurator: ProductConfigurator = {
+      ...currentConfigurator,
+      choiceGroups: nextGroups,
+    };
+
+    const remoteOptionId = nextGroups
+      .flatMap((group) => group.options)
+      .find((option) => option.id === optionId)?.meta?.remoteOptionId;
+
+    if (supabaseClient && typeof remoteOptionId === 'string') {
+      const option = nextGroups.flatMap((group) => group.options).find((item) => item.id === optionId);
+      const metadata = { ...(option?.meta ?? {}) };
+      delete metadata.remoteOptionId;
+
+      const { error } = await supabaseClient
+        .from('product_options')
+        .update({
+          is_active: isActive,
+          metadata: metadata,
+        })
+        .eq('id', remoteOptionId);
+
+      if (error) {
+        return undefined;
+      }
+    }
+
+    configuratorStore = {
+      ...configuratorStore,
+      [configuratorKey]: updatedConfigurator,
+    };
+
+    return simulateAsync(updatedConfigurator, 120);
   },
 };

@@ -1,5 +1,6 @@
 import heroImage from '../assets/hero-section.jpg';
 import logoImage from '../assets/logo.png';
+import heroTransparentLogoImage from '../assets/hero-logo.png';
 import type { BusinessSettings, ReviewExample, ReviewStat } from '../types';
 
 export const business: BusinessSettings = {
@@ -50,6 +51,7 @@ export const business: BusinessSettings = {
 export const brandAssets = {
   heroImage,
   logoImage,
+  heroTransparentLogoImage,
 };
 
 export const reviewStat: ReviewStat = {

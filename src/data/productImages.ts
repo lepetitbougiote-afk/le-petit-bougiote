@@ -56,6 +56,7 @@ export const productImageMap: Record<string, ProductImageConfig> = {
   'prod-formule-pdj': realImage(cappuccino, 'Formule petit-déjeuner chez Le Petit Bougiote'),
   'prod-group-cafes-classiques': realImage(espresso, 'Cafés classiques servis chez Le Petit Bougiote'),
   'prod-group-boissons-gourmandes': realImage(gourmetHotDrink, 'Boissons gourmandes servies chez Le Petit Bougiote'),
+  'prod-group-smoothies': brandedDrinkPlaceholder('Smoothies servis chez Le Petit Bougiote'),
   'prod-formule-gourmande': realImage(gourmetHotDrink, 'Formule gourmande servie chez Le Petit Bougiote'),
   'prod-eau': brandedDrinkPlaceholder('Boisson froide Le Petit Bougiote'),
   'prod-eau-gazeuse': brandedDrinkPlaceholder('Boisson froide Le Petit Bougiote'),
