@@ -4,9 +4,26 @@ import { supabaseClient } from '../../lib/supabaseClient';
 import { orderService } from '../../services/orderService';
 import { analyticsService } from '../../services/analyticsService';
 import type { Order, OrderStatus } from '../../types';
-import { formatPrice, getConfirmationStatusLabel, getDesiredTimeLabel, getFulfillmentTypeLabel, getOrderStatusLabel } from '../../lib/utils';
+import {
+  formatPrice,
+  getConfirmationStatusLabel,
+  getDesiredTimeLabel,
+  getFulfillmentTypeLabel,
+  getOrderStatusLabel,
+  getPaymentStatusLabel,
+} from '../../lib/utils';
 
-const statuses: Array<OrderStatus | 'all'> = ['all', 'pending', 'accepted', 'preparing', 'ready', 'completed', 'cancelled'];
+const statuses: Array<OrderStatus | 'all'> = [
+  'all',
+  'pending_payment',
+  'awaiting_restaurant_confirmation',
+  'time_adjustment_requested',
+  'confirmed',
+  'preparing',
+  'ready',
+  'completed',
+  'cancelled',
+];
 
 export default function OrdersAdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -14,6 +31,8 @@ export default function OrdersAdminPage() {
   const [activeStatus, setActiveStatus] = useState<(typeof statuses)[number]>('all');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [proposedTimeDrafts, setProposedTimeDrafts] = useState<Record<string, string>>({});
+  const [actionLoadingByOrder, setActionLoadingByOrder] = useState<Record<string, boolean>>({});
+  const [actionErrorByOrder, setActionErrorByOrder] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function loadOrders() {
@@ -71,23 +90,44 @@ export default function OrdersAdminPage() {
   }, [activeStatus, orders, search]);
 
   async function handleStatusUpdate(orderId: string, status: OrderStatus) {
-    const updated = await orderService.updateOrderStatus(orderId, status);
-    setOrders((current) => current.map((order) => (order.id === orderId && updated ? updated : order)));
-    analyticsService.trackAdminOrderStatusUpdate({ order_id: orderId, status });
+    try {
+      setActionLoadingByOrder((current) => ({ ...current, [orderId]: true }));
+      setActionErrorByOrder((current) => ({ ...current, [orderId]: '' }));
+      const updated = await orderService.updateOrderStatus(orderId, status);
+      setOrders((current) => current.map((order) => (order.id === orderId && updated ? updated : order)));
+      analyticsService.trackAdminOrderStatusUpdate({ order_id: orderId, status });
+    } catch (error) {
+      setActionErrorByOrder((current) => ({
+        ...current,
+        [orderId]:
+          error instanceof Error ? error.message : 'Impossible de mettre à jour le statut.',
+      }));
+    } finally {
+      setActionLoadingByOrder((current) => ({ ...current, [orderId]: false }));
+    }
   }
 
   async function handleAccept(order: Order) {
-    const updated = await orderService.updateOrderConfirmationByAdmin(order.id, {
-      confirmationStatus: 'confirmed',
-      status: 'accepted',
-      proposedTime: null,
-      desiredTime: order.desiredTime ?? null,
-      restaurantNote:
-        noteDrafts[order.id]?.trim() ||
-        'Votre créneau a bien été accepté. Vous pouvez finaliser votre commande dès maintenant.',
-      customerConfirmationRequired: false,
-    });
-    setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
+    try {
+      setActionLoadingByOrder((current) => ({ ...current, [order.id]: true }));
+      setActionErrorByOrder((current) => ({ ...current, [order.id]: '' }));
+      const updated = await orderService.captureDeliveryPaymentByAdmin(order.id, {
+        confirmedDeliveryTime: order.proposedTime ?? order.desiredTime ?? null,
+        restaurantNote:
+          noteDrafts[order.id]?.trim() ||
+          'Votre créneau a bien été accepté. Votre commande passe en préparation.',
+        nextStatus: 'confirmed',
+      });
+      setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
+    } catch (error) {
+      setActionErrorByOrder((current) => ({
+        ...current,
+        [order.id]:
+          error instanceof Error ? error.message : 'Impossible de capturer le paiement.',
+      }));
+    } finally {
+      setActionLoadingByOrder((current) => ({ ...current, [order.id]: false }));
+    }
   }
 
   async function handleProposeTime(order: Order) {
@@ -96,29 +136,47 @@ export default function OrdersAdminPage() {
       return;
     }
 
-    const updated = await orderService.updateOrderConfirmationByAdmin(order.id, {
-      confirmationStatus: 'time_adjustment_requested',
-      status: 'pending',
-      proposedTime,
-      restaurantNote:
-        noteDrafts[order.id]?.trim() ||
-        'Le créneau demandé n’est pas disponible. Merci de confirmer le nouvel horaire proposé.',
-      customerConfirmationRequired: true,
-    });
-    setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
+    try {
+      setActionLoadingByOrder((current) => ({ ...current, [order.id]: true }));
+      setActionErrorByOrder((current) => ({ ...current, [order.id]: '' }));
+      const updated = await orderService.proposeDeliveryTimeByAdmin(order.id, {
+        proposedTime,
+        restaurantNote:
+          noteDrafts[order.id]?.trim() ||
+          'Le créneau demandé n’est pas disponible. Merci de confirmer le nouvel horaire proposé.',
+      });
+      setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
+    } catch (error) {
+      setActionErrorByOrder((current) => ({
+        ...current,
+        [order.id]:
+          error instanceof Error ? error.message : 'Impossible de proposer un nouvel horaire.',
+      }));
+    } finally {
+      setActionLoadingByOrder((current) => ({ ...current, [order.id]: false }));
+    }
   }
 
   async function handleRefuse(order: Order) {
-    const updated = await orderService.updateOrderConfirmationByAdmin(order.id, {
-      confirmationStatus: 'cancelled',
-      status: 'cancelled',
-      proposedTime: null,
-      restaurantNote:
-        noteDrafts[order.id]?.trim() ||
-        'Nous sommes désolés, cette demande ne peut pas être validée dans les conditions demandées.',
-      customerConfirmationRequired: false,
-    });
-    setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
+    try {
+      setActionLoadingByOrder((current) => ({ ...current, [order.id]: true }));
+      setActionErrorByOrder((current) => ({ ...current, [order.id]: '' }));
+      const updated = await orderService.cancelAuthorizedPaymentByAdmin(order.id, {
+        restaurantNote:
+          noteDrafts[order.id]?.trim() ||
+          'Nous sommes désolés, cette demande ne peut pas être validée dans les conditions demandées.',
+        cancellationReason: 'restaurant_cancelled_delivery_request',
+      });
+      setOrders((current) => current.map((item) => (item.id === order.id && updated ? updated : item)));
+    } catch (error) {
+      setActionErrorByOrder((current) => ({
+        ...current,
+        [order.id]:
+          error instanceof Error ? error.message : 'Impossible d’annuler la demande.',
+      }));
+    } finally {
+      setActionLoadingByOrder((current) => ({ ...current, [order.id]: false }));
+    }
   }
 
   async function handleDelete(orderId: string) {
@@ -150,7 +208,24 @@ export default function OrdersAdminPage() {
         {filteredOrders.length === 0 ? (
           <div className="rounded-[1.8rem] bg-white p-10 text-center text-slate-600">Aucune commande pour ce filtre.</div>
         ) : (
-          filteredOrders.map((order) => (
+          filteredOrders.map((order) => {
+            const requiresDeliveryDecision =
+              order.fulfillmentType === 'delivery' &&
+              order.paymentStatus === 'authorized' &&
+              ['awaiting_restaurant_confirmation', 'time_adjustment_requested'].includes(
+                order.status,
+              );
+            const awaitingCustomerReply =
+              order.fulfillmentType === 'delivery' &&
+              order.confirmationStatus === 'time_adjustment_requested' &&
+              order.customerConfirmationRequired;
+            const showDeliveryConfirmationPanel =
+              order.fulfillmentType === 'delivery' &&
+              (requiresDeliveryDecision || awaitingCustomerReply || order.paymentStatus === 'authorized');
+            const actionLoading = actionLoadingByOrder[order.id] ?? false;
+            const actionError = actionErrorByOrder[order.id];
+
+            return (
             <article key={order.id} className="rounded-[1.8rem] bg-white p-6">
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
@@ -168,6 +243,21 @@ export default function OrdersAdminPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <StatusBadge tone={order.confirmationStatus === 'confirmed' ? 'success' : order.confirmationStatus === 'cancelled' ? 'danger' : 'warning'}>
                   {getConfirmationStatusLabel(order.confirmationStatus)}
+                </StatusBadge>
+                <StatusBadge
+                  tone={
+                    order.paymentStatus === 'paid'
+                      ? 'success'
+                      : order.paymentStatus === 'authorized'
+                        ? 'warning'
+                        : order.paymentStatus === 'cancelled' ||
+                            order.paymentStatus === 'capture_failed' ||
+                            order.paymentStatus === 'refund_failed'
+                          ? 'danger'
+                          : 'neutral'
+                  }
+                >
+                  {getPaymentStatusLabel(order.paymentStatus)}
                 </StatusBadge>
                 {order.fulfillmentType === 'delivery' ? (
                   <StatusBadge tone={order.customerConfirmationRequired ? 'warning' : 'neutral'}>
@@ -205,9 +295,34 @@ export default function OrdersAdminPage() {
                 </div>
               </div>
               {order.notes ? <p className="mt-4 text-sm text-slate-600">Note: {order.notes}</p> : null}
-              {order.fulfillmentType === 'delivery' ? (
+              {showDeliveryConfirmationPanel ? (
                 <div className="mt-5 rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Double confirmation</p>
+                  {order.paymentStatus === 'authorized' ? (
+                    <div className="mt-3 rounded-2xl bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900">
+                      Paiement autorisé, non capturé pour le moment.
+                    </div>
+                  ) : null}
+                  {order.paymentStatus === 'paid' ? (
+                    <div className="mt-3 rounded-2xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-900">
+                      Paiement déjà capturé. Aucune autre action Stripe n’est nécessaire.
+                    </div>
+                  ) : null}
+                  {order.paymentStatus === 'cancelled' ? (
+                    <div className="mt-3 rounded-2xl bg-rose-100 px-4 py-3 text-sm font-semibold text-rose-900">
+                      Paiement autorisé annulé. Cette demande est terminée.
+                    </div>
+                  ) : null}
+                  {requiresDeliveryDecision ? (
+                    <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-600">
+                      Utilisez les actions ci-dessous pour accepter le créneau, proposer un nouvel horaire ou annuler la demande avant capture.
+                    </div>
+                  ) : null}
+                  {awaitingCustomerReply ? (
+                    <div className="mt-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-600">
+                      Un nouvel horaire a été proposé. Le système attend maintenant la réponse du client.
+                    </div>
+                  ) : null}
                   <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_220px]">
                     <label className="text-sm font-medium text-slate-700">
                       Message envoyé au client
@@ -250,35 +365,55 @@ export default function OrdersAdminPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => void handleAccept(order)} className="rounded-full bg-brand-green px-4 py-2 text-sm font-semibold text-white">
-                      Accepter le créneau
-                    </button>
-                    <button type="button" onClick={() => void handleProposeTime(order)} className="rounded-full border border-brand-green/20 bg-white px-4 py-2 text-sm font-semibold text-slate-800">
-                      Proposer un autre horaire
-                    </button>
-                    <button type="button" onClick={() => void handleRefuse(order)} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700">
-                      Refuser la demande
-                    </button>
-                  </div>
+                  {actionError ? (
+                    <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      {actionError}
+                    </p>
+                  ) : null}
+                  {requiresDeliveryDecision ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button type="button" disabled={actionLoading} onClick={() => void handleAccept(order)} className="rounded-full bg-brand-green px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300">
+                        Accepter le créneau
+                      </button>
+                      <button type="button" disabled={actionLoading} onClick={() => void handleProposeTime(order)} className="rounded-full border border-brand-green/20 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+                        Proposer un autre horaire
+                      </button>
+                      <button type="button" disabled={actionLoading} onClick={() => void handleRefuse(order)} className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50">
+                        Refuser la demande
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <div className="mt-5 flex flex-wrap items-center gap-2">
-                {(['pending', 'accepted', 'preparing', 'ready', 'completed', 'cancelled'] as OrderStatus[]).map((status) => (
-                  <button key={status} type="button" onClick={() => void handleStatusUpdate(order.id, status)} className="rounded-full border border-brand-green/10 px-4 py-2 text-sm font-semibold text-slate-700">
-                    {getOrderStatusLabel(status)}
-                  </button>
-                ))}
+                {!requiresDeliveryDecision
+                  ? ([
+                      'pending_payment',
+                      'awaiting_restaurant_confirmation',
+                      'time_adjustment_requested',
+                      'confirmed',
+                      'preparing',
+                      'ready',
+                      'completed',
+                      'cancelled',
+                    ] as OrderStatus[]).map((status) => (
+                      <button key={status} type="button" disabled={actionLoading} onClick={() => void handleStatusUpdate(order.id, status)} className="rounded-full border border-brand-green/10 px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">
+                        {getOrderStatusLabel(status)}
+                      </button>
+                    ))
+                  : null}
                 <button
                   type="button"
+                  disabled={actionLoading}
                   onClick={() => void handleDelete(order.id)}
-                  className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700"
+                  className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Supprimer
                 </button>
               </div>
             </article>
-          ))
+            );
+          })
         )}
       </div>
     </section>

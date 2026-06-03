@@ -20,6 +20,8 @@ import RegisterPage from './pages/auth/RegisterPage';
 import AboutPage from './pages/public/AboutPage';
 import CartPage from './pages/public/CartPage';
 import CheckoutPage from './pages/public/CheckoutPage';
+import CheckoutCancelPage from './pages/public/CheckoutCancelPage';
+import CheckoutSuccessPage from './pages/public/CheckoutSuccessPage';
 import ContactPage from './pages/public/ContactPage';
 import GalleryPage from './pages/public/GalleryPage';
 import HomePage from './pages/public/HomePage';
@@ -40,6 +42,8 @@ export default function App() {
               <Route path="/commander" element={<Navigate to="/livraison" replace />} />
               <Route path="/panier" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+              <Route path="/checkout/cancel" element={<CheckoutCancelPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
               <Route path="/connexion" element={<LoginPage />} />
               <Route path="/inscription" element={<RegisterPage />} />

@@ -88,8 +88,14 @@ for insert with check (true);
 create policy "customers read own orders" on public.orders
 for select using (auth.uid() = user_id or customer_email = auth.jwt() ->> 'email');
 
-create policy "customers update own pending orders" on public.orders
-for update using (auth.uid() = user_id and status = 'pending');
+create policy "customers update own active orders" on public.orders
+for update using (
+  (auth.uid() = user_id or customer_email = auth.jwt() ->> 'email')
+  and (
+    status in ('pending', 'pending_payment', 'awaiting_restaurant_confirmation', 'time_adjustment_requested')
+    or confirmation_status = 'time_adjustment_requested'
+  )
+);
 
 create policy "customers read own order items" on public.order_items
 for select using (

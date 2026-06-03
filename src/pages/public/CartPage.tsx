@@ -26,7 +26,7 @@ export default function CartPage() {
     <>
       <SEO
         title="Panier | Le Petit Bougiote Béziers"
-        description="Retrouvez les articles de votre commande, modifiez les quantités et ajoutez une note avant le checkout."
+        description="Retrouvez les articles de votre commande, modifiez les quantités et ajoutez une note avant le paiement."
         path="/panier"
       />
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
@@ -48,9 +48,6 @@ export default function CartPage() {
             <p className="mt-2 text-slate-600">{emptyText}</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link to={continuePath} className="inline-flex rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">{continueLabel}</Link>
-              <Link to="/compte/commandes" className="inline-flex rounded-full border border-brand-green/10 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
-                Mes commandes
-              </Link>
             </div>
           </div>
         ) : (
@@ -135,11 +132,8 @@ export default function CartPage() {
               </div>
               <div className="mt-6 grid gap-3">
                 <Link to={continuePath} className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">{continueLabel}</Link>
-                <Link to="/compte/commandes" className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">
-                  Mes commandes
-                </Link>
                 <Link to="/checkout" onClick={() => analyticsService.trackCheckoutStart({ item_count: items.length, subtotal })} className="rounded-full bg-brand-green px-5 py-3 text-center text-sm font-semibold text-white">
-                  Passer au checkout
+                  Passer au paiement
                 </Link>
               </div>
             </aside>

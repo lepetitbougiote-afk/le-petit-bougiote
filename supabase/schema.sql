@@ -2,7 +2,11 @@ create extension if not exists "pgcrypto";
 
 create type public.order_status as enum (
   'pending',
+  'pending_payment',
+  'awaiting_restaurant_confirmation',
   'accepted',
+  'confirmed',
+  'time_adjustment_requested',
   'preparing',
   'ready',
   'completed',
@@ -17,9 +21,12 @@ create type public.user_role as enum (
 
 create type public.payment_status as enum (
   'unpaid',
+  'authorized',
   'paid',
   'refunded',
-  'cancelled'
+  'cancelled',
+  'capture_failed',
+  'refund_failed'
 );
 
 create type public.fulfillment_type as enum (
@@ -181,7 +188,7 @@ create table if not exists public.orders (
   customer_name text not null,
   customer_phone text,
   customer_email text,
-  status public.order_status not null default 'pending',
+  status public.order_status not null default 'pending_payment',
   payment_status public.payment_status not null default 'unpaid',
   fulfillment_type public.fulfillment_type not null default 'click_collect',
   dining_mode public.dining_mode,
@@ -189,12 +196,23 @@ create table if not exists public.orders (
   delivery_address text,
   delivery_fee numeric(10,2) not null default 0,
   desired_time text,
+  requested_delivery_time text,
+  confirmed_delivery_time text,
   confirmation_status public.confirmation_status not null default 'pending',
   proposed_time text,
   customer_confirmation_required boolean not null default false,
   customer_confirmed_at timestamptz,
   restaurant_note text,
   customer_note text,
+  stripe_payment_intent_id text,
+  stripe_checkout_session_id text,
+  authorized_at timestamptz,
+  captured_at timestamptz,
+  customer_can_cancel_until timestamptz default (timezone('utc', now()) + interval '10 minutes'),
+  cancelled_at timestamptz,
+  refund_id text,
+  refund_status text,
+  cancellation_reason text,
   public_confirmation_token uuid not null default gen_random_uuid(),
   confirmation_link_expires_at timestamptz,
   last_customer_notification_at timestamptz,

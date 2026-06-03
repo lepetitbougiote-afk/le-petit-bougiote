@@ -1,61 +1,40 @@
-import { ArrowRight, MapPin, Phone, ShoppingBag, Star } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { OrderModeSelector, type OrderModeChoice } from '../../components/public/OrderModeSelector';
-import { ProductConfiguratorModal } from '../../components/public/ProductConfiguratorModal';
+import { MapPin, Phone, ShoppingBag, Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { brandAssets, business } from '../../data/business';
-import { products } from '../../data/menu';
-import { useCart } from '../../contexts/CartContext';
+import { business } from '../../data/business';
 import { getTodayOpeningStatus } from '../../lib/utils';
 import { analyticsService } from '../../services/analyticsService';
-import type { Product } from '../../types';
-
-const burgerProduct = products.find((product) => product.id === 'prod-group-burgers-beef') ?? null;
-const dessertProduct = products.find((product) => product.id === 'prod-group-desserts') ?? null;
-const saladProduct = products.find((product) => product.id === 'prod-medit') ?? null;
-
-type PendingAction =
-  | { type: 'add'; product: Product }
-  | { type: 'open'; product: Product }
-  | null;
+import heroBackground from '../../../identity/hero picture.png';
+import heroBackgroundMobile from '../../assets/hero-section-mobile version.png';
+import heroMobileLogo from '../../assets/transparent-logo-hero.png';
+import beefBurgers from '../../assets/menu/beef-burgers.webp';
+import cesarSalad from '../../assets/menu/cesar-salad.webp';
+import salonMonde from '../../assets/venue/salon-monde.jpg';
 
 export default function HomePage() {
-  const navigate = useNavigate();
-  const { addItem, addCustomItem, setFulfillmentType, setDiningMode } = useCart();
-  const [showModeDialog, setShowModeDialog] = useState(false);
-  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-  function openModeDialog(action: PendingAction = null) {
-    setPendingAction(action);
-    setShowModeDialog(true);
-  }
-
-  function chooseMode(choice: OrderModeChoice) {
-    setShowModeDialog(false);
-
-    if (choice === 'delivery') {
-      setFulfillmentType('delivery');
-      setDiningMode(null);
-    } else {
-      setFulfillmentType('click_collect');
-      setDiningMode(choice);
-    }
-
-    if (pendingAction?.type === 'add') {
-      addItem(pendingAction.product);
-    }
-    if (pendingAction?.type === 'open') {
-      setSelectedProduct(pendingAction.product);
-    }
-
-    setPendingAction(null);
-    navigate(choice === 'delivery' ? '/menu?service=delivery' : `/menu?service=${choice}`);
-  }
+  const galleryHighlights = [
+    {
+      title: 'Burger signature',
+      description: 'Un visuel gourmand, simple et direct dès le hero.',
+      image: beefBurgers,
+      alt: 'Burger signature du Petit Bougiote',
+    },
+    {
+      title: 'Salade fraîche',
+      description: 'Une alternative fraîche et colorée à mettre en avant.',
+      image: cesarSalad,
+      alt: 'Salade du Petit Bougiote',
+    },
+    {
+      title: 'Salon animé',
+      description: 'Une ambiance simple et familiale.',
+      image: salonMonde,
+      alt: 'Salon du Petit Bougiote avec des clients',
+    },
+  ];
 
   return (
     <>
@@ -65,161 +44,158 @@ export default function HomePage() {
         path="/"
       />
 
-      {showModeDialog ? (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/55 px-4">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto">
-            <OrderModeSelector
-              compact
-              title="Choisissez votre mode de commande"
-              description="Sur place, click & collect ou livraison locale: nous adaptons ensuite le panier et le checkout automatiquement."
-              onChoose={chooseMode}
-            />
-            <div className="mt-4 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowModeDialog(false);
-                  setPendingAction(null);
-                }}
-                className="rounded-full border border-white/25 bg-white/90 px-5 py-3 text-sm font-semibold text-slate-700"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       <section className="relative isolate overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
-            src={brandAssets.heroImage}
+            src={heroBackgroundMobile}
             alt="Le Petit Bougiote Coffee & Burger"
-            className="h-full w-full object-cover object-[56%_center] md:object-[66%_center] lg:object-[76%_center]"
+            className="h-full w-full object-cover object-[center_18%] lg:hidden"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
-          <div className="absolute inset-0 z-[1] bg-[linear-gradient(112deg,rgba(11,14,12,0.72),rgba(27,43,33,0.48),rgba(31,22,18,0.3))]" />
-        </div>
-        <div className="pointer-events-none absolute inset-0 z-[2]">
           <img
-            src={brandAssets.heroTransparentLogoImage}
+            src={heroBackground}
             alt="Le Petit Bougiote Coffee & Burger"
-            className="absolute left-1/2 top-[14%] h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 object-contain opacity-[0.72] drop-shadow-[0_24px_40px_rgba(0,0,0,0.4)] sm:top-[55%] sm:h-[28rem] sm:w-[28rem] lg:top-[52%] lg:h-[50rem] lg:w-[50rem] xl:h-[58rem] xl:w-[58rem]"
+            className="hidden h-full w-full object-cover object-[center_38%] lg:block"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
+          <div className="absolute inset-0 z-[1] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_34%),linear-gradient(180deg,rgba(5,18,29,0.18)_0%,rgba(8,20,31,0.10)_20%,rgba(10,22,32,0.18)_52%,rgba(10,20,28,0.42)_100%)] lg:bg-[radial-gradient(circle_at_78%_18%,rgba(255,255,255,0.18),transparent_22%),linear-gradient(115deg,rgba(3,17,28,0.62)_0%,rgba(7,20,32,0.40)_28%,rgba(11,23,33,0.16)_50%,rgba(10,18,28,0.12)_100%)]" />
         </div>
-        <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:py-16 lg:grid-cols-[1.12fr_0.88fr] lg:gap-12 lg:px-8 lg:py-24">
-          <Reveal className="relative z-10 max-w-3xl">
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge tone="success">Sur place</StatusBadge>
-              <StatusBadge tone="success">Livraison locale</StatusBadge>
-              <StatusBadge>5,0 sur Google</StatusBadge>
-              <StatusBadge>{business.brandLine}</StatusBadge>
-              <StatusBadge>{getTodayOpeningStatus(business.openingHours)}</StatusBadge>
-            </div>
-            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:mt-5 lg:text-[5.1rem] lg:leading-[0.95]">
-              Burgers, cafés & douceurs dans une ambiance familiale à Béziers
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-white/84">
-              Le Petit Bougiote vous accueille rue Diderot avec des burgers généreux, des cafés, des formules petit-déjeuner, des desserts et une ambiance simple, propre et conviviale.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/menu" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-green shadow-lg shadow-black/10">
-                Voir le menu
-              </Link>
-              <button
-                type="button"
-                onClick={() => openModeDialog()}
-                className="rounded-full bg-brand-green/88 px-6 py-3 text-sm font-semibold text-white ring-1 ring-white/15"
-              >
-                Commander
-              </button>
-              <a
-                href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
-                onClick={() => analyticsService.trackCallClick()}
-                className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white"
-              >
-                Appeler maintenant
-              </a>
-              <a
-                href={business.mapUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => analyticsService.trackDirectionsClick()}
-                className="rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white"
-              >
-                Itinéraire Google Maps
-              </a>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-3 text-sm text-white/76">
-              <span className="rounded-full border border-white/15 bg-white/8 px-4 py-2">Burgers + menu</span>
-              <span className="rounded-full border border-white/15 bg-white/8 px-4 py-2">Petite salade</span>
-              <span className="rounded-full border border-white/15 bg-white/8 px-4 py-2">Desserts</span>
-              <span className="rounded-full border border-white/15 bg-white/8 px-4 py-2">Livraison Béziers</span>
+        <div className="relative mx-auto min-h-[47rem] max-w-7xl px-4 pb-12 pt-5 sm:min-h-[52rem] sm:px-6 sm:pb-14 sm:pt-6 lg:min-h-[50rem] lg:px-6 lg:pb-16 lg:pt-10">
+          <div className="pointer-events-none absolute inset-x-0 top-[0.75rem] z-[2] flex justify-center sm:top-[1rem] lg:hidden">
+            <img
+              src={heroMobileLogo}
+              alt=""
+              aria-hidden="true"
+              className="w-[38rem] max-w-[152vw] opacity-[0.98] mix-blend-normal [filter:drop-shadow(0_0_26px_rgba(255,248,220,0.34))_drop-shadow(0_0_54px_rgba(120,255,210,0.18))_saturate(1.35)_contrast(1.08)_brightness(1.18)]"
+              decoding="async"
+            />
+          </div>
+          <Reveal className="relative z-10 max-w-[23rem] pt-[28rem] sm:max-w-[29rem] sm:pt-[31rem] lg:max-w-[20.5rem] lg:pt-[2.25rem]">
+            <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(10,18,28,0.10),rgba(10,18,28,0.22))] p-4 shadow-[0_24px_80px_-45px_rgba(0,0,0,0.7)] backdrop-blur-[2px] sm:p-5 lg:rounded-[1.35rem] lg:border lg:border-white/18 lg:bg-[linear-gradient(180deg,rgba(8,18,28,0.34),rgba(10,18,28,0.18))] lg:p-3.5 lg:shadow-[0_26px_90px_-40px_rgba(0,0,0,0.72)] lg:backdrop-blur-md">
+              <div className="flex flex-wrap gap-2">
+                <StatusBadge tone="success">Sur place</StatusBadge>
+                <StatusBadge tone="success">Livraison locale</StatusBadge>
+                <StatusBadge>5,0 sur Google</StatusBadge>
+                <StatusBadge>{business.brandLine}</StatusBadge>
+                <StatusBadge>{getTodayOpeningStatus(business.openingHours)}</StatusBadge>
+              </div>
+              <h1 className="mt-5 max-w-[18rem] text-[1.18rem] font-semibold leading-[1.12] tracking-tight text-white [text-shadow:0_8px_30px_rgba(0,0,0,0.38)] sm:max-w-[22rem] sm:text-[1.5rem] lg:mt-3 lg:max-w-[16.5rem] lg:text-[1.85rem] lg:leading-[1]">
+                Burgers, cafés & douceurs dans une ambiance familiale à Béziers
+              </h1>
+              <div className="mt-4 flex max-w-[20rem] flex-wrap gap-2.5 sm:max-w-[22rem] lg:mt-4 lg:max-w-[17rem] lg:flex-row lg:items-start">
+                <Link to="/menu" className="rounded-full bg-brand-green px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-green/20">
+                  Menu
+                </Link>
+                <a
+                  href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
+                  onClick={() => analyticsService.trackCallClick()}
+                  className="rounded-full border border-white/28 bg-white/18 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm"
+                >
+                  Appeler maintenant
+                </a>
+                <a
+                  href={business.mapUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => analyticsService.trackDirectionsClick()}
+                  className="rounded-full border border-white/28 bg-white/18 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm"
+                >
+                  Itinéraire Google Maps
+                </a>
+              </div>
+              <div className="mt-4 flex max-w-[20rem] flex-wrap gap-2.5 text-xs text-white/92 sm:mt-8 sm:max-w-[23rem] sm:text-sm lg:mt-4 lg:max-w-[17rem] lg:gap-2">
+                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Burgers maison</span>
+                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Cafés & petit-déjeuner</span>
+                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Desserts & gourmandises</span>
+                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Galerie du lieu</span>
+              </div>
             </div>
           </Reveal>
 
-          <Reveal className="relative z-10 grid gap-4 self-end lg:pt-8" delay={120}>
-            {burgerProduct ? (
-              <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.16),rgba(255,255,255,0.08))] p-5 shadow-2xl shadow-black/20 backdrop-blur-md">
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/65">Produit populaire</p>
-                <div className="mt-4 overflow-hidden rounded-[1.6rem] bg-white/10">
-                  <div className="aspect-[16/10] overflow-hidden">
-                    <img src={burgerProduct.image} alt={burgerProduct.imageAlt} className="h-full w-full object-cover" />
-                  </div>
-                  <div className="p-5 text-white">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <h2 className="text-2xl font-semibold">Classic</h2>
-                        <p className="mt-1 text-sm text-white/74">Burger bœuf & sauce maison</p>
-                      </div>
-                      <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">10,90 €</span>
-                    </div>
-                    <div className="mt-5 flex items-center justify-between gap-4">
-                      <p className="text-sm text-white/72">Disponible en burger seul ou en menu +3 €</p>
-                      <button
-                        type="button"
-                        onClick={() => openModeDialog({ type: 'open', product: burgerProduct })}
-                        className="inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-deepgreen"
-                      >
-                        Commander <ArrowRight className="ml-2 h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+          <Reveal
+            className="absolute right-8 top-8 z-10 hidden w-full max-w-[18rem] gap-2.5 lg:grid"
+            delay={120}
+          >
+            <Link
+              to="/galerie"
+              className="group overflow-hidden rounded-[1.45rem] border border-white/45 bg-white/26 text-left shadow-[0_18px_45px_-30px_rgba(32,44,35,0.28)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/40"
+            >
+              <div className="overflow-hidden aspect-[1/1.05] lg:aspect-[16/9]">
+                <img
+                  src={galleryHighlights[0].image}
+                  alt={galleryHighlights[0].alt}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                />
               </div>
-            ) : null}
+              <div className="hidden p-3 lg:block">
+                <p className="text-sm font-semibold text-slate-950">{galleryHighlights[0].title}</p>
+                <p className="mt-1 text-xs leading-6 text-slate-700/78">{galleryHighlights[0].description}</p>
+              </div>
+            </Link>
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5 lg:gap-3">
+              {galleryHighlights.slice(1).map((item) => (
+                <Link
+                  key={item.title}
+                  to="/galerie"
+                  className="group overflow-hidden rounded-[1.3rem] border border-white/45 bg-white/26 text-left shadow-[0_18px_45px_-30px_rgba(32,44,35,0.28)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/40"
+                >
+                  <div className="overflow-hidden aspect-[4/4.9] lg:aspect-[4/4.6]">
+                    <img
+                      src={item.image}
+                      alt={item.alt}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                    />
+                  </div>
+                  <div className="hidden p-3 lg:block">
+                    <p className="text-sm font-semibold text-slate-950">{item.title}</p>
+                    <p className="mt-1 text-xs leading-6 text-slate-700/78">{item.description}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </Reveal>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {saladProduct ? (
-                <button
-                  type="button"
-                  onClick={() => openModeDialog({ type: 'add', product: saladProduct })}
-                  className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/12 p-3 text-left text-white backdrop-blur-md"
-                >
-                  <div className="aspect-square overflow-hidden rounded-[1.2rem] bg-white/10">
-                    <img src={saladProduct.image} alt={saladProduct.imageAlt} className="h-full w-full object-cover" />
-                  </div>
-                  <p className="mt-3 text-sm font-semibold">Salades</p>
-                  <p className="mt-1 text-xs text-white/70">Fraîches & gourmandes</p>
-                </button>
-              ) : null}
-              {dessertProduct ? (
-                <button
-                  type="button"
-                  onClick={() => openModeDialog({ type: 'open', product: dessertProduct })}
-                  className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/12 p-3 text-left text-white backdrop-blur-md"
-                >
-                  <div className="aspect-square overflow-hidden rounded-[1.2rem] bg-white/10">
-                    <img src={dessertProduct.image} alt={dessertProduct.imageAlt} className="h-full w-full object-cover" />
-                  </div>
-                  <p className="mt-3 text-sm font-semibold">{dessertProduct.name}</p>
-                  <p className="mt-1 text-xs text-white/70">{dessertProduct.priceLabel}</p>
-                </button>
-              ) : null}
-              <div className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(145deg,rgba(74,139,69,0.26),rgba(62,40,26,0.38))] p-4 text-white backdrop-blur-md">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/65">Rue Diderot</p>
-                <p className="mt-3 text-base font-semibold">Sur place, click & collect ou livraison</p>
-                <p className="mt-2 text-sm leading-6 text-white/74">Une commande plus fluide, pensée pour le quartier et les pauses gourmandes.</p>
+          <Reveal className="relative z-10 mt-12 grid gap-3 sm:mt-14 lg:hidden" delay={120}>
+            <Link
+              to="/galerie"
+              className="group overflow-hidden rounded-[1.45rem] border border-white/45 bg-white/26 text-left shadow-[0_18px_45px_-30px_rgba(32,44,35,0.28)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/40"
+            >
+              <div className="overflow-hidden aspect-[16/10]">
+                <img
+                  src={galleryHighlights[0].image}
+                  alt={galleryHighlights[0].alt}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                />
               </div>
+              <div className="p-3">
+                <p className="text-sm font-semibold text-slate-950">{galleryHighlights[0].title}</p>
+                <p className="mt-1 text-xs leading-6 text-slate-700/78">{galleryHighlights[0].description}</p>
+              </div>
+            </Link>
+            <div className="grid grid-cols-2 gap-3">
+              {galleryHighlights.slice(1).map((item) => (
+                <Link
+                  key={item.title}
+                  to="/galerie"
+                  className="group overflow-hidden rounded-[1.3rem] border border-white/45 bg-white/26 text-left shadow-[0_18px_45px_-30px_rgba(32,44,35,0.28)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/40"
+                >
+                  <div className="overflow-hidden aspect-[4/5]">
+                    <img
+                      src={item.image}
+                      alt={item.alt}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                    />
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold text-slate-950">{item.title}</p>
+                    <p className="mt-1 text-xs leading-6 text-slate-700/78">{item.description}</p>
+                  </div>
+                </Link>
+              ))}
             </div>
           </Reveal>
         </div>
@@ -259,11 +235,9 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="Livraison"
             title={<span className="text-white">Une solution locale sur Béziers, avec validation attentive des créneaux</span>}
-            description={<span className="text-white/76">Préparez votre panier, choisissez votre mode de récupération et avancez jusqu’au checkout. Le paiement en ligne sera intégré directement à cette étape.</span>}
+            description={<span className="text-white/76">Consultez librement la carte, ajoutez vos produits puis choisissez à la fin entre sur place, à emporter ou livraison.</span>}
             actions={
-              <button type="button" onClick={() => openModeDialog()} className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-brand-green">
-                Commander
-              </button>
+              <Link to="/menu" className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-brand-green">Voir le menu</Link>
             }
           />
         </div>
@@ -287,14 +261,6 @@ export default function HomePage() {
         </div>
       </Reveal>
 
-      <ProductConfiguratorModal
-        product={selectedProduct}
-        open={Boolean(selectedProduct)}
-        onClose={() => setSelectedProduct(null)}
-        onConfirm={(items) => {
-          items.forEach((item) => addCustomItem(item));
-        }}
-      />
     </>
   );
 }

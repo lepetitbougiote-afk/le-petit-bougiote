@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type {
+  CartItem,
   ConfirmationStatus,
   DiningMode,
   FulfillmentType,
@@ -32,10 +33,18 @@ export function formatDate(date: string) {
 
 export function getOrderStatusLabel(status: OrderStatus) {
   switch (status) {
+    case 'pending_payment':
+      return 'Paiement en attente';
+    case 'awaiting_restaurant_confirmation':
+      return 'En attente de confirmation';
     case 'pending':
       return 'En attente';
     case 'accepted':
       return 'Acceptée';
+    case 'confirmed':
+      return 'Confirmée';
+    case 'time_adjustment_requested':
+      return 'Horaire à confirmer';
     case 'preparing':
       return 'En préparation';
     case 'ready':
@@ -81,6 +90,26 @@ export function getConfirmationStatusLabel(status: ConfirmationStatus) {
   }
 }
 
+export function getPaymentStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'authorized':
+      return 'Paiement autorisé';
+    case 'paid':
+      return 'Paiement capturé';
+    case 'cancelled':
+      return 'Paiement annulé';
+    case 'refunded':
+      return 'Paiement remboursé';
+    case 'capture_failed':
+      return 'Capture échouée';
+    case 'refund_failed':
+      return 'Remboursement échoué';
+    case 'unpaid':
+    default:
+      return 'Paiement en attente';
+  }
+}
+
 export function getTodayOpeningStatus(openingHours: OpeningHour[], now = new Date()) {
   const dayIndex = now.getDay();
   const frenchDays = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -113,4 +142,26 @@ export function getPostLoginPath(profile: Pick<UserProfile, 'phone' | 'address' 
   }
 
   return needsProfileCompletion(profile) ? '/compte?complete=1' : '/compte';
+}
+
+const DELIVERY_RESTRICTED_PRODUCT_IDS = new Set([
+  'prod-formule-express',
+  'prod-formule-classic',
+  'prod-formule-pdj',
+  'prod-formule-gourmande',
+]);
+
+const DELIVERY_RESTRICTED_CONFIGURATORS = new Set([
+  'cafes-classiques',
+  'boissons-gourmandes',
+  'formule-gourmande',
+]);
+
+export function isDeliveryRestrictedCartItem(
+  item: Pick<CartItem, 'productId' | 'configuratorKey'>,
+) {
+  return (
+    DELIVERY_RESTRICTED_PRODUCT_IDS.has(item.productId) ||
+    DELIVERY_RESTRICTED_CONFIGURATORS.has(item.configuratorKey ?? '')
+  );
 }

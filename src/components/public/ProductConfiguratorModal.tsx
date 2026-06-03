@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CartItem, Product, ProductChoiceOption, ProductConfigurator } from '../../types';
 import { formatPrice } from '../../lib/utils';
@@ -36,11 +37,13 @@ export function ProductConfiguratorModal({
   open,
   onClose,
   onConfirm,
+  initialQuantity = 1,
 }: {
   product: Product | null;
   open: boolean;
   onClose: () => void;
   onConfirm: (items: Array<Omit<CartItem, 'id'>>) => void;
+  initialQuantity?: number;
 }) {
   const [configurator, setConfigurator] = useState<ProductConfigurator | null>(null);
   const [selectedByGroup, setSelectedByGroup] = useState<Record<string, string>>({});
@@ -53,7 +56,7 @@ export function ProductConfiguratorModal({
     if (!open || !product?.configuratorKey) {
       setConfigurator(null);
       setSelectedByGroup({});
-      setQuantity(1);
+      setQuantity(initialQuantity);
       setBurgerSelections({});
       setNote('');
       return;
@@ -62,11 +65,11 @@ export function ProductConfiguratorModal({
     void menuService.getProductConfigurator(product.configuratorKey).then((value) => {
       setConfigurator(value ?? null);
       setSelectedByGroup({});
-      setQuantity(1);
+      setQuantity(initialQuantity);
       setBurgerSelections({});
       setNote('');
     });
-  }, [open, product]);
+  }, [initialQuantity, open, product]);
 
   const selectedOptions = useMemo(() => {
     if (!configurator) {
@@ -189,17 +192,22 @@ export function ProductConfiguratorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 px-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[95] grid place-items-center bg-slate-950/55 px-4">
+      <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+        <button
+          type="button"
+          onClick={onClose}
+          className="sticky top-0 z-20 ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-brand-green/10 bg-white text-slate-700 shadow-sm"
+          aria-label="Fermer"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-green/70">Choix produit</p>
             <h2 className="mt-2 text-2xl font-semibold text-slate-950">{product.name}</h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{configurator?.description ?? product.description}</p>
           </div>
-          <button type="button" className="rounded-full border border-brand-green/10 px-4 py-2 text-sm font-semibold text-slate-700" onClick={onClose}>
-            Fermer
-          </button>
         </div>
 
         {configurator ? (

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { CartItem, DiningMode, FulfillmentType, Product } from '../types';
+import { isDeliveryRestrictedCartItem } from '../lib/utils';
 
 const STORAGE_KEY = 'bougiote-cart';
 const DEFAULT_FULFILLMENT_TYPE: FulfillmentType = 'click_collect';
@@ -22,6 +23,8 @@ interface CartContextValue {
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   updateItemNote: (itemId: string, note: string) => void;
+  removeItems: (itemIds: string[]) => void;
+  getDeliveryRestrictedItems: () => CartItem[];
   clearCart: () => void;
   subtotal: number;
   totalItems: number;
@@ -129,6 +132,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const removeItems = (itemIds: string[]) => {
+    if (itemIds.length === 0) {
+      return;
+    }
+    const ids = new Set(itemIds);
+    setItems((current) => current.filter((item) => !ids.has(item.id)));
+  };
+
+  const getDeliveryRestrictedItems = () =>
+    items.filter((item) => isDeliveryRestrictedCartItem(item));
+
   const clearCart = () => setItems([]);
 
   const subtotal = items.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
@@ -147,6 +161,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeItem,
         updateQuantity,
         updateItemNote,
+        removeItems,
+        getDeliveryRestrictedItems,
         clearCart,
         subtotal,
         totalItems,

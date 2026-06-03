@@ -24,12 +24,23 @@ export type GalleryCategory =
 
 export type OrderStatus =
   | 'pending'
+  | 'pending_payment'
+  | 'awaiting_restaurant_confirmation'
   | 'accepted'
+  | 'confirmed'
+  | 'time_adjustment_requested'
   | 'preparing'
   | 'ready'
   | 'completed'
   | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'paid' | 'refunded' | 'cancelled';
+export type PaymentStatus =
+  | 'unpaid'
+  | 'authorized'
+  | 'paid'
+  | 'cancelled'
+  | 'refunded'
+  | 'capture_failed'
+  | 'refund_failed';
 
 export type FulfillmentType = 'click_collect' | 'delivery';
 export type DiningMode = 'sur_place' | 'a_emporter' | null;
@@ -189,7 +200,19 @@ export interface CheckoutPayload {
   customerConfirmedAt?: string | null;
   restaurantNote?: string;
   customerNote?: string;
+  status?: OrderStatus;
+  paymentStatus?: PaymentStatus;
   paymentMode: PaymentMode;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  authorizedAt?: string | null;
+  capturedAt?: string | null;
+  customerCanCancelUntil?: string | null;
+  confirmedDeliveryTime?: string | null;
+  cancelledAt?: string | null;
+  refundId?: string | null;
+  refundStatus?: string | null;
+  cancellationReason?: string | null;
   items: CartItem[];
 }
 
@@ -214,6 +237,16 @@ export interface Order {
   paymentStatus?: PaymentStatus;
   paymentMode: PaymentMode;
   createdAt: string;
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  authorizedAt?: string | null;
+  capturedAt?: string | null;
+  customerCanCancelUntil?: string | null;
+  confirmedDeliveryTime?: string | null;
+  cancelledAt?: string | null;
+  refundId?: string | null;
+  refundStatus?: string | null;
+  cancellationReason?: string | null;
   publicConfirmationToken?: string | null;
   confirmationLinkExpiresAt?: string | null;
   lastCustomerNotificationAt?: string | null;

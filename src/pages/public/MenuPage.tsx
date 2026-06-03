@@ -1,13 +1,12 @@
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { OrderModeSelector, type OrderModeChoice } from '../../components/public/OrderModeSelector';
+import { type OrderModeChoice } from '../../components/public/OrderModeSelector';
 import { ProductConfiguratorModal } from '../../components/public/ProductConfiguratorModal';
 import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { formatPrice } from '../../lib/utils';
 import { menuService } from '../../services/menuService';
@@ -16,6 +15,7 @@ import type { CartItem, Product, ProductChoiceOption, ProductConfigurator } from
 type MenuServiceMode = OrderModeChoice | null;
 type QuantityMap = Record<string, number>;
 type BurgerSelectionMap = Record<string, { solo: number; menu: number }>;
+type ConfigurableSelectionMap = Record<string, number>;
 
 type MenuSectionKey =
   | 'burgers'
@@ -46,8 +46,7 @@ type MenuCard = {
     | 'accompagnements'
     | 'boissons-chaudes'
     | 'boissons-froides'
-    | 'douceurs'
-    | 'formules';
+    | 'douceurs';
   title: string;
   description: string;
   image?: string;
@@ -105,8 +104,9 @@ export default function MenuPage() {
   const [openCardKey, setOpenCardKey] = useState<MenuCard['key'] | null>(null);
   const [simpleSelections, setSimpleSelections] = useState<Record<string, QuantityMap>>({});
   const [burgerSelections, setBurgerSelections] = useState<BurgerSelectionMap>({});
+  const [configurableSelections, setConfigurableSelections] = useState<ConfigurableSelectionMap>({});
+  const [selectedProductInitialQuantity, setSelectedProductInitialQuantity] = useState(1);
   const { addCustomItem, setFulfillmentType, setDiningMode, totalItems } = useCart();
-  const { user } = useAuth();
 
   useEffect(() => {
     void menuService.getProducts().then(setProducts);
@@ -183,7 +183,6 @@ export default function MenuPage() {
         title: 'Petit-déjeuner',
         description: 'Les formules du matin, simples et rapides.',
         kind: 'simple',
-        hiddenForDelivery: true,
         products: ['prod-formule-express', 'prod-formule-classic', 'prod-formule-pdj']
           .map((id) => productById.get(id))
           .filter(Boolean) as Product[],
@@ -193,7 +192,6 @@ export default function MenuPage() {
         title: 'Cafés classiques',
         description: 'Les boissons chaudes classiques à commander en quelques gestes.',
         kind: 'options',
-        hiddenForDelivery: true,
         product: cafesProduct,
         configurator: configurators['cafes-classiques'],
       },
@@ -202,7 +200,6 @@ export default function MenuPage() {
         title: 'Boissons gourmandes',
         description: 'Les boissons chaudes gourmandes de la carte.',
         kind: 'options',
-        hiddenForDelivery: true,
         product: gourmetProduct,
         configurator: configurators['boissons-gourmandes'],
       },
@@ -219,7 +216,6 @@ export default function MenuPage() {
         title: 'Formule gourmande',
         description: 'Une formule prête à composer avec boisson gourmande et pâtisserie.',
         kind: 'configurable',
-        hiddenForDelivery: true,
         product: formuleProduct,
       },
       {
@@ -232,15 +228,12 @@ export default function MenuPage() {
           .filter(Boolean) as Product[],
       },
     ].filter((section) => {
-      if (serviceMode === 'delivery' && section.hiddenForDelivery) {
-        return false;
-      }
       if (section.kind === 'simple') {
         return Boolean(section.products?.length);
       }
       return Boolean(section.product);
     });
-  }, [configurators, productById, serviceMode]);
+  }, [configurators, productById]);
 
   const sectionByKey = useMemo(
     () => new Map(sections.map((section) => [section.key, section])),
@@ -258,9 +251,6 @@ export default function MenuPage() {
       sectionByKey.get('boissons-froides')?.products?.[0];
     const dessertsImageSource =
       sectionByKey.get('desserts')?.product ?? sectionByKey.get('gourmandises')?.product;
-    const formulesImageSource =
-      sectionByKey.get('petit-dejeuner')?.products?.[0] ?? sectionByKey.get('formule-gourmande')?.product;
-
     return [
       {
         key: 'burgers',
@@ -292,11 +282,15 @@ export default function MenuPage() {
       {
         key: 'boissons-chaudes',
         title: 'Boissons chaudes',
-        description: 'Cafés classiques et boissons gourmandes regroupés dans une seule fiche.',
+        description: 'Cafés classiques, boissons gourmandes, petit-déjeuner et formule gourmande dans une seule fiche.',
         image: boissonsChaudesImageSource?.image,
         imageAlt: boissonsChaudesImageSource?.imageAlt,
-        sectionKeys: ['cafes-classiques', 'boissons-gourmandes'],
-        hidden: !sectionByKey.get('cafes-classiques') && !sectionByKey.get('boissons-gourmandes'),
+        sectionKeys: ['petit-dejeuner', 'cafes-classiques', 'boissons-gourmandes'],
+        hidden:
+          !sectionByKey.get('cafes-classiques') &&
+          !sectionByKey.get('boissons-gourmandes') &&
+          !sectionByKey.get('petit-dejeuner') &&
+          !sectionByKey.get('formule-gourmande'),
       },
       {
         key: 'douceurs',
@@ -307,17 +301,8 @@ export default function MenuPage() {
         sectionKeys: ['desserts', 'gourmandises'],
         hidden: !sectionByKey.get('desserts') && !sectionByKey.get('gourmandises'),
       },
-      {
-        key: 'formules',
-        title: 'Petit-déjeuner & formules',
-        description: 'Les formules du matin et la formule gourmande dans un seul espace.',
-        image: formulesImageSource?.image,
-        imageAlt: formulesImageSource?.imageAlt,
-        sectionKeys: ['petit-dejeuner', 'formule-gourmande'],
-        hidden: !sectionByKey.get('petit-dejeuner') && !sectionByKey.get('formule-gourmande'),
-      },
     ].filter((card) => !card.hidden);
-  }, [sectionByKey, serviceMode]);
+  }, [sectionByKey]);
 
   const openCard = cards.find((card) => card.key === openCardKey) ?? null;
 
@@ -354,6 +339,13 @@ export default function MenuPage() {
         },
       };
     });
+  }
+
+  function updateConfigurableSelection(productId: string, delta: number) {
+    setConfigurableSelections((current) => ({
+      ...current,
+      [productId]: Math.max(0, (current[productId] ?? 0) + delta),
+    }));
   }
 
   function getSimpleSelectionCount(sectionKey: string) {
@@ -586,6 +578,12 @@ export default function MenuPage() {
     }
 
     if (section.kind === 'simple') {
+      const formuleGourmandeProduct =
+        section.key === 'petit-dejeuner' ? sectionByKey.get('formule-gourmande')?.product : null;
+      const formuleGourmandeQuantity = formuleGourmandeProduct
+        ? configurableSelections[formuleGourmandeProduct.id] ?? 0
+        : 0;
+
       const sectionCount = getSimpleSelectionCount(section.key);
       return (
         <div>
@@ -623,11 +621,45 @@ export default function MenuPage() {
                 </div>
               );
             })}
+            {formuleGourmandeProduct ? (
+              <div className="rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
+                <div className="grid gap-4 md:grid-cols-[1fr_230px] md:items-center">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-950">{formuleGourmandeProduct.name}</p>
+                    <p className="mt-1 text-sm leading-7 text-slate-600">{formuleGourmandeProduct.description}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-4 py-3">
+                    <p className="text-sm font-semibold text-slate-950">{formatPrice(formuleGourmandeProduct.price, formuleGourmandeProduct.priceLabel)}</p>
+                    <div className="mt-3 flex justify-end">
+                      <QuantityControl
+                        value={formuleGourmandeQuantity}
+                        onDecrease={() => updateConfigurableSelection(formuleGourmandeProduct.id, -1)}
+                        onIncrease={() => updateConfigurableSelection(formuleGourmandeProduct.id, 1)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedProduct(formuleGourmandeProduct);
+                        setSelectedProductInitialQuantity(formuleGourmandeQuantity > 0 ? formuleGourmandeQuantity : 1);
+                      }}
+                      className="mt-3 w-full rounded-full bg-brand-deepgreen px-4 py-2 text-sm font-semibold text-white"
+                    >
+                      Composer la formule
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite px-5 py-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Sélection courante</p>
-              <p className="mt-1 text-sm text-slate-600">{sectionCount > 0 ? `${sectionCount} article${sectionCount > 1 ? 's' : ''} prêt${sectionCount > 1 ? 's' : ''} à ajouter` : 'Aucune sélection pour le moment'}</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {sectionCount > 0
+                  ? `${sectionCount} article${sectionCount > 1 ? 's' : ''} prêt${sectionCount > 1 ? 's' : ''} à ajouter`
+                  : 'Aucune sélection pour le moment'}
+              </p>
             </div>
             <button
               type="button"
@@ -705,23 +737,21 @@ export default function MenuPage() {
     if (section.kind === 'configurable' && section.product) {
       return (
         <div className="rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-5">
-          <div className="grid gap-5 md:grid-cols-[220px_1fr] md:items-center">
-            <div className="overflow-hidden rounded-[1.4rem] bg-white">
-              <img src={section.product.image} alt={section.product.imageAlt} className="h-44 w-full object-cover" />
-            </div>
-            <div>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="max-w-2xl">
               <p className="text-lg font-semibold text-slate-950">{section.product.name}</p>
               <p className="mt-2 text-sm leading-7 text-slate-600">{section.product.description}</p>
-              <div className="mt-5 flex flex-wrap items-center gap-4">
-                <span className="text-base font-semibold text-brand-deepgreen">{formatPrice(section.product.price, section.product.priceLabel)}</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProduct(section.product ?? null)}
-                  className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white"
-                >
-                  Composer la formule
-                </button>
-              </div>
+              <p className="mt-2 text-sm leading-7 text-slate-600">La quantité se choisit dans la fiche, pour pouvoir en ajouter plusieurs si besoin.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <span className="text-base font-semibold text-brand-deepgreen">{formatPrice(section.product.price, section.product.priceLabel)}</span>
+              <button
+                type="button"
+                onClick={() => setSelectedProduct(section.product ?? null)}
+                className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white"
+              >
+                Composer la formule
+              </button>
             </div>
           </div>
         </div>
@@ -741,147 +771,122 @@ export default function MenuPage() {
       <Reveal className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Menu"
-          title="Choisissez d’abord votre mode de commande"
-          description="Sur place, click & collect ou livraison: le parcours s’adapte ensuite automatiquement à votre commande."
+          title="Consultez librement la carte"
+          description="Préparez votre panier d’abord, puis choisissez à la fin entre sur place, à emporter ou livraison."
         />
-
-        {!serviceMode ? (
-          <div className="mt-8">
-            <OrderModeSelector
-              title="Avant de voir la carte, choisissez votre parcours"
-              description="Le menu peut être utilisé pour une commande sur place, à emporter ou en livraison locale. Le panier et le checkout s’adaptent ensuite automatiquement."
-              onChoose={chooseMode}
-            />
+        <div className="mt-8 rounded-[1.8rem] border border-brand-green/10 bg-white p-6 shadow-[0_18px_45px_-34px_rgba(62,40,26,0.22)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge tone="success">Carte publique</StatusBadge>
+              <StatusBadge tone="success">Paiement en ligne</StatusBadge>
+              <StatusBadge>
+                {serviceMode === 'delivery'
+                  ? 'Mode aperçu: livraison'
+                  : serviceMode === 'a_emporter'
+                    ? 'Mode aperçu: à emporter'
+                    : serviceMode === 'sur_place'
+                      ? 'Mode aperçu: sur place'
+                      : 'Choix du mode à la fin'}
+              </StatusBadge>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => chooseMode('sur_place')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${serviceMode === 'sur_place' ? 'bg-brand-deepgreen text-white' : 'bg-brand-cream text-slate-700'}`}
+              >
+                Sur place
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseMode('a_emporter')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${serviceMode === 'a_emporter' ? 'bg-brand-deepgreen text-white' : 'bg-brand-cream text-slate-700'}`}
+              >
+                À emporter
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseMode('delivery')}
+                className={`rounded-full px-4 py-2 text-sm font-semibold ${serviceMode === 'delivery' ? 'bg-brand-deepgreen text-white' : 'border border-brand-green/15 bg-white text-slate-700'}`}
+              >
+                Livraison
+              </button>
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="mt-8 rounded-[1.8rem] border border-brand-green/10 bg-white p-6 shadow-[0_18px_45px_-34px_rgba(62,40,26,0.22)]">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge tone="success">Commande rapide</StatusBadge>
-                  <StatusBadge tone="success">Paiement en ligne bientôt</StatusBadge>
-                  <StatusBadge>
-                    {serviceMode === 'delivery'
-                      ? 'Livraison locale'
-                      : serviceMode === 'sur_place'
-                        ? 'Commande sur place'
-                        : 'Click & Collect'}
-                  </StatusBadge>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {user ? (
-                    <Link
-                      to="/compte/commandes"
-                      className="rounded-full border border-brand-green/15 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-                    >
-                      Mes commandes
-                    </Link>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => chooseMode('sur_place')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold ${serviceMode === 'sur_place' ? 'bg-brand-deepgreen text-white' : 'bg-brand-cream text-slate-700'}`}
-                  >
-                    Sur place
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => chooseMode('a_emporter')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold ${serviceMode === 'a_emporter' ? 'bg-brand-deepgreen text-white' : 'bg-brand-cream text-slate-700'}`}
-                  >
-                    Click & Collect
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => chooseMode('delivery')}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold ${serviceMode === 'delivery' ? 'bg-brand-deepgreen text-white' : 'border border-brand-green/15 bg-white text-slate-700'}`}
-                  >
-                    Livraison
-                  </button>
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-600">
+            Les familles de produits sont regroupées dans des fiches simples: burgers, accompagnements, boissons froides, boissons chaudes, desserts et gourmandises.
+          </p>
+          <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600">
+            Note livraison: les boissons chaudes, les petits-déjeuners et les formules chaudes ne sont pas disponibles en livraison. Si vous choisissez la livraison à la fin, ces articles seront retirés automatiquement du panier avec un message d’information.
+          </p>
+        </div>
+
+        <div className="mt-8">
+          <SectionHeading
+            eyebrow="À découvrir"
+            title="Une carte pensée pour aller à l’essentiel"
+            description="Burgers, accompagnements, douceurs, boissons froides et boissons chaudes sont regroupés pour rendre la commande plus simple et plus claire."
+          />
+        </div>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {cards.map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => setOpenCardKey(card.key)}
+              className="overflow-hidden rounded-[1.8rem] border border-brand-border bg-white text-left shadow-[0_18px_45px_-34px_rgba(62,40,26,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(62,40,26,0.42)]"
+            >
+              <div className="relative aspect-[4/3] overflow-hidden bg-brand-offwhite">
+                {card.image ? <img src={card.image} alt={card.imageAlt ?? card.title} className="h-full w-full object-cover" /> : null}
+                <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(30,30,30,0.72))] p-4">
+                  <p className="text-2xl font-semibold text-white">{card.title}</p>
                 </div>
               </div>
-              <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-600">
-                Les familles de produits sont regroupées dans des fiches simples: burgers, accompagnements, boissons, douceurs et formules. Vous ouvrez la fiche voulue puis ajoutez votre sélection au panier.
-              </p>
-              {serviceMode === 'delivery' ? (
-                <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600">
-                  En livraison, les boissons chaudes sont retirées de la carte pour préserver la qualité du service. Le forfait Béziers de 4,00 € s’ajoute automatiquement au récapitulatif.
-                </p>
-              ) : null}
-            </div>
-
-            <div className="mt-8">
-              <SectionHeading
-                eyebrow="À découvrir"
-                title="Une carte pensée pour aller à l’essentiel"
-                description="Burgers, accompagnements, douceurs, boissons et formules sont regroupés pour rendre la commande plus simple et plus claire."
-              />
-            </div>
-
-            <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {cards.map((card) => (
-                <button
-                  key={card.key}
-                  type="button"
-                  onClick={() => setOpenCardKey(card.key)}
-                  className="overflow-hidden rounded-[1.8rem] border border-brand-border bg-white text-left shadow-[0_18px_45px_-34px_rgba(62,40,26,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_55px_-34px_rgba(62,40,26,0.42)]"
-                >
-                  <div className="relative aspect-[4/3] overflow-hidden bg-brand-offwhite">
-                    {card.image ? <img src={card.image} alt={card.imageAlt ?? card.title} className="h-full w-full object-cover" /> : null}
-                    <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(30,30,30,0.72))] p-4">
-                      <p className="text-2xl font-semibold text-white">{card.title}</p>
-                    </div>
-                  </div>
-                  <div className="p-5">
-                    <p className="text-sm leading-7 text-slate-600">{card.description}</p>
-                    <div className="mt-5 flex items-center justify-between">
-                      <span className="text-sm font-semibold text-brand-deepgreen">Ouvrir la fiche</span>
-                      <span className="rounded-full bg-brand-cream px-4 py-2 text-sm font-semibold text-slate-700">Choisir</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-[1.6rem] border border-brand-green/10 bg-white px-5 py-4 shadow-[0_16px_40px_-30px_rgba(62,40,26,0.22)]">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Panier</p>
-                <p className="mt-1 text-sm text-slate-600">{totalItems} article{totalItems > 1 ? 's' : ''} dans le panier</p>
+              <div className="p-5">
+                <p className="text-sm leading-7 text-slate-600">{card.description}</p>
+                <div className="mt-5 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-brand-deepgreen">Ouvrir la fiche</span>
+                  <span className="rounded-full bg-brand-cream px-4 py-2 text-sm font-semibold text-slate-700">Choisir</span>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/panier" className="rounded-full border border-brand-green/15 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
-                  Voir le panier
-                </Link>
-                {user ? (
-                  <Link to="/compte/commandes" className="rounded-full border border-brand-green/15 bg-white px-5 py-3 text-sm font-semibold text-slate-700">
-                    Mes commandes
-                  </Link>
-                ) : null}
-                <Link to="/checkout" className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white">
-                  Passer au checkout
-                </Link>
-              </div>
-            </div>
-          </>
-        )}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-[1.6rem] border border-brand-green/10 bg-white px-5 py-4 shadow-[0_16px_40px_-30px_rgba(62,40,26,0.22)]">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Panier</p>
+            <p className="mt-1 text-sm text-slate-600">{totalItems} article{totalItems > 1 ? 's' : ''} dans le panier</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link to="/panier" className="rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">
+              Voir le panier
+            </Link>
+            <Link to="/checkout" className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white">
+              Passer au paiement
+            </Link>
+          </div>
+        </div>
       </Reveal>
 
       {openCard ? (
         <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/55 px-4">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+          <div className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setOpenCardKey(null)}
+              className="sticky top-0 z-20 ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-brand-green/10 bg-white text-slate-700 shadow-sm"
+              aria-label="Fermer"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Commande</p>
                 <h2 className="mt-2 text-3xl font-semibold text-slate-950">{openCard.title}</h2>
                 <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-600">{openCard.description}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpenCardKey(null)}
-                className="rounded-full border border-brand-green/10 px-4 py-2 text-sm font-semibold text-slate-700"
-              >
-                Fermer
-              </button>
             </div>
             <div className="mt-6 grid gap-6">
               {openCard.sectionKeys.map((sectionKey) => {
@@ -907,6 +912,7 @@ export default function MenuPage() {
       <ProductConfiguratorModal
         product={selectedProduct}
         open={Boolean(selectedProduct)}
+        initialQuantity={selectedProductInitialQuantity}
         onClose={() => setSelectedProduct(null)}
         onConfirm={(items) => {
           if (serviceMode === 'delivery') {
@@ -917,6 +923,9 @@ export default function MenuPage() {
             setDiningMode(serviceMode ?? 'sur_place');
           }
           items.forEach((item) => addCustomItem(item));
+          if (selectedProduct?.id) {
+            setConfigurableSelections((current) => ({ ...current, [selectedProduct.id]: 0 }));
+          }
         }}
       />
     </>

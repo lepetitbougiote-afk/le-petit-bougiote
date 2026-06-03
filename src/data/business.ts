@@ -1,4 +1,4 @@
-import heroImage from '../assets/hero-section.jpg';
+import heroImage from '../../identity/hero picture.png';
 import logoImage from '../assets/logo.png';
 import heroTransparentLogoImage from '../assets/hero-logo.png';
 import type { BusinessSettings, ReviewExample, ReviewStat } from '../types';

@@ -4,7 +4,7 @@ import { SectionHeading } from '../../components/ui/SectionHeading';
 import { galleryImages } from '../../data/gallery';
 import type { GalleryCategory } from '../../types';
 
-const filters: Array<GalleryCategory | 'Tous'> = ['Tous', 'Burgers', 'Cafes', 'Desserts', 'Terrasse', 'Menu', 'Ambiance'];
+const filters: Array<GalleryCategory | 'Tous'> = ['Tous', 'Ambiance', 'Terrasse', 'Burgers', 'Menu', 'Desserts', 'Cafes'];
 
 export default function GalleryPage() {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>('Tous');
@@ -23,8 +23,8 @@ export default function GalleryPage() {
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Galerie"
-          title="Un aperçu gourmand de l’univers du restaurant"
-          description="Burgers, cafés, douceurs et ambiance de comptoir : un aperçu simple et chaleureux de l’univers du restaurant."
+          title="Un aperçu du lieu et de la carte"
+          description="Salon, terrasse, burgers, cafés et douceurs : un aperçu simple et chaleureux de l’univers du restaurant."
           align="center"
         />
         <div className="mt-8 flex flex-wrap justify-center gap-2">
@@ -48,7 +48,7 @@ export default function GalleryPage() {
               <div className="p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.25em] text-brand-green/70">{image.category}</p>
                 <h2 className="mt-2 text-lg font-semibold text-slate-950">{image.title}</h2>
-                <p className="mt-2 text-sm leading-7 text-slate-600">Une sélection pensée pour refléter l’ambiance, les boissons et les gourmandises du lieu.</p>
+                <p className="mt-2 text-sm leading-7 text-slate-600">Une sélection pensée pour refléter le lieu, l’ambiance et les produits de la maison.</p>
               </div>
             </article>
           ))}

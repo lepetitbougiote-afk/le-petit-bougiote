@@ -31,6 +31,8 @@ type SupabaseOrderRow = {
   delivery_address: string | null;
   delivery_fee: number | null;
   desired_time: string | null;
+  requested_delivery_time: string | null;
+  confirmed_delivery_time: string | null;
   confirmation_status: Order['confirmationStatus'];
   proposed_time: string | null;
   customer_confirmation_required: boolean;
@@ -39,6 +41,15 @@ type SupabaseOrderRow = {
   customer_note: string | null;
   notes: string | null;
   payment_status: PaymentStatus;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  authorized_at: string | null;
+  captured_at: string | null;
+  customer_can_cancel_until: string | null;
+  cancelled_at: string | null;
+  refund_id: string | null;
+  refund_status: string | null;
+  cancellation_reason: string | null;
   public_confirmation_token: string | null;
   confirmation_link_expires_at: string | null;
   last_customer_notification_at: string | null;
@@ -59,7 +70,7 @@ function mapOrder(row: SupabaseOrderRow, orderItems?: SupabaseOrderItemRow[]): O
     customerEmail: row.customer_email ?? undefined,
     deliveryAddress: row.delivery_address ?? undefined,
     deliveryFee: row.delivery_fee ?? 0,
-    desiredTime: row.desired_time ?? undefined,
+    desiredTime: row.requested_delivery_time ?? row.desired_time ?? undefined,
     confirmationStatus: row.confirmation_status,
     proposedTime: row.proposed_time ?? undefined,
     customerConfirmationRequired: row.customer_confirmation_required,
@@ -70,6 +81,16 @@ function mapOrder(row: SupabaseOrderRow, orderItems?: SupabaseOrderItemRow[]): O
     paymentStatus: row.payment_status,
     paymentMode: 'online_payment_pending',
     createdAt: row.created_at,
+    stripeCheckoutSessionId: row.stripe_checkout_session_id ?? null,
+    stripePaymentIntentId: row.stripe_payment_intent_id ?? null,
+    authorizedAt: row.authorized_at ?? null,
+    capturedAt: row.captured_at ?? null,
+    customerCanCancelUntil: row.customer_can_cancel_until ?? null,
+    confirmedDeliveryTime: row.confirmed_delivery_time ?? null,
+    cancelledAt: row.cancelled_at ?? null,
+    refundId: row.refund_id ?? null,
+    refundStatus: row.refund_status ?? null,
+    cancellationReason: row.cancellation_reason ?? null,
     publicConfirmationToken: row.public_confirmation_token,
     confirmationLinkExpiresAt: row.confirmation_link_expires_at,
     lastCustomerNotificationAt: row.last_customer_notification_at,
@@ -102,6 +123,44 @@ async function getAuthOrderScope() {
     userId: data.user.id,
     email: data.user.email ?? null,
   };
+}
+
+async function getAccessToken() {
+  if (!supabaseClient) {
+    return null;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
+function getCancelDeadline(createdAt: string) {
+  return new Date(new Date(createdAt).getTime() + 10 * 60 * 1000).toISOString();
+}
+
+async function callOrderStripeAction<T extends object>(path: string, body: Record<string, unknown>) {
+  const accessToken = await getAccessToken();
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = (await response.json()) as T | { error?: string; message?: string };
+  if (!response.ok) {
+    const message =
+      'message' in data
+        ? data.message
+        : 'error' in data
+          ? data.error
+          : undefined;
+    throw new Error(message || 'Action Stripe impossible.');
+  }
+
+  return data as T;
 }
 
 async function getRemoteProductIdMap(productIds: Array<string | null | undefined>) {
@@ -177,6 +236,8 @@ const ORDER_SELECT = `
   delivery_address,
   delivery_fee,
   desired_time,
+  requested_delivery_time,
+  confirmed_delivery_time,
   confirmation_status,
   proposed_time,
   customer_confirmation_required,
@@ -185,6 +246,15 @@ const ORDER_SELECT = `
   customer_note,
   notes,
   payment_status,
+  stripe_checkout_session_id,
+  stripe_payment_intent_id,
+  authorized_at,
+  captured_at,
+  customer_can_cancel_until,
+  cancelled_at,
+  refund_id,
+  refund_status,
+  cancellation_reason,
   public_confirmation_token,
   confirmation_link_expires_at,
   last_customer_notification_at,
@@ -262,6 +332,18 @@ export const orderService = {
       0,
     );
     const deliveryFee = payload.fulfillmentType === 'delivery' ? payload.deliveryFee ?? 4 : 0;
+    const createdAt = new Date().toISOString();
+    const requestedDeliveryTime =
+      payload.fulfillmentType === 'delivery' ? payload.desiredTime : undefined;
+    const status =
+      payload.status ??
+      (payload.fulfillmentType === 'delivery'
+        ? 'awaiting_restaurant_confirmation'
+        : 'confirmed');
+    const paymentStatus = payload.paymentStatus ?? 'unpaid';
+    const customerCanCancelUntil =
+      payload.customerCanCancelUntil ??
+      (payload.fulfillmentType === 'delivery' ? getCancelDeadline(createdAt) : null);
     const newOrder: Order = {
       id: createOrderId(payload.fulfillmentType === 'delivery' ? 'LIV' : 'CLC'),
       fulfillmentType: payload.fulfillmentType,
@@ -272,17 +354,27 @@ export const orderService = {
       customerEmail: payload.customerEmail,
       deliveryAddress: payload.deliveryAddress,
       deliveryFee,
-      desiredTime: payload.desiredTime,
+      desiredTime: requestedDeliveryTime,
       confirmationStatus: payload.confirmationStatus ?? 'pending',
       proposedTime: payload.proposedTime,
-      customerConfirmationRequired: payload.customerConfirmationRequired ?? payload.fulfillmentType === 'delivery',
+      customerConfirmationRequired: payload.customerConfirmationRequired ?? false,
       customerConfirmedAt: payload.customerConfirmedAt ?? null,
       restaurantNote: payload.restaurantNote,
       customerNote: payload.customerNote,
-      status: 'pending',
-      paymentStatus: 'unpaid',
+      status,
+      paymentStatus,
       paymentMode: payload.paymentMode,
-      createdAt: new Date().toISOString(),
+      createdAt,
+      stripeCheckoutSessionId: payload.stripeCheckoutSessionId ?? null,
+      stripePaymentIntentId: payload.stripePaymentIntentId ?? null,
+      authorizedAt: payload.authorizedAt ?? null,
+      capturedAt: payload.capturedAt ?? null,
+      customerCanCancelUntil,
+      confirmedDeliveryTime: payload.confirmedDeliveryTime ?? null,
+      cancelledAt: payload.cancelledAt ?? null,
+      refundId: payload.refundId ?? null,
+      refundStatus: payload.refundStatus ?? null,
+      cancellationReason: payload.cancellationReason ?? null,
       publicConfirmationToken: null,
       confirmationLinkExpiresAt: null,
       lastCustomerNotificationAt: null,
@@ -316,6 +408,8 @@ export const orderService = {
           delivery_address: newOrder.deliveryAddress,
           delivery_fee: newOrder.deliveryFee ?? 0,
           desired_time: newOrder.desiredTime,
+          requested_delivery_time: requestedDeliveryTime,
+          confirmed_delivery_time: newOrder.confirmedDeliveryTime,
           confirmation_status: newOrder.confirmationStatus,
           proposed_time: newOrder.proposedTime,
           customer_confirmation_required: newOrder.customerConfirmationRequired,
@@ -323,11 +417,23 @@ export const orderService = {
           restaurant_note: newOrder.restaurantNote,
           customer_note: newOrder.customerNote,
           notes: newOrder.notes,
-          payment_status: 'unpaid',
+          status: newOrder.status,
+          payment_status: newOrder.paymentStatus ?? 'unpaid',
+          stripe_checkout_session_id: newOrder.stripeCheckoutSessionId,
+          stripe_payment_intent_id: newOrder.stripePaymentIntentId,
+          authorized_at: newOrder.authorizedAt,
+          captured_at: newOrder.capturedAt,
+          customer_can_cancel_until: newOrder.customerCanCancelUntil,
+          cancelled_at: newOrder.cancelledAt,
+          refund_id: newOrder.refundId,
+          refund_status: newOrder.refundStatus,
+          cancellation_reason: newOrder.cancellationReason,
           subtotal: newOrder.subtotal,
           total: newOrder.total,
         })
-        .select('id, public_confirmation_token, confirmation_link_expires_at, last_customer_notification_at')
+        .select(
+          'id, public_confirmation_token, confirmation_link_expires_at, last_customer_notification_at',
+        )
         .single();
 
       if (!orderError && insertedOrder) {
@@ -435,6 +541,27 @@ export const orderService = {
     return this.updateOrderStatus(orderId, 'cancelled');
   },
 
+  async updatePaymentStatus(orderId: string, paymentStatus: PaymentStatus): Promise<Order | undefined> {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('orders')
+        .update({ payment_status: paymentStatus })
+        .eq('id', orderId)
+        .select(ORDER_SELECT)
+        .maybeSingle();
+
+      if (!error && data) {
+        const orderItemsByOrderId = await fetchOrderItemsByOrderIds([orderId]);
+        return simulateAsync(mapOrder(data as SupabaseOrderRow, orderItemsByOrderId.get(orderId)), 120);
+      }
+    }
+
+    orderStore = orderStore.map((order) =>
+      order.id === orderId ? { ...order, paymentStatus } : order,
+    );
+    return simulateAsync(orderStore.find((order) => order.id === orderId));
+  },
+
   async deleteOrder(orderId: string): Promise<boolean> {
     if (supabaseClient) {
       const { error } = await supabaseClient.from('orders').delete().eq('id', orderId);
@@ -446,6 +573,81 @@ export const orderService = {
     const initialLength = orderStore.length;
     orderStore = orderStore.filter((order) => order.id !== orderId);
     return simulateAsync(orderStore.length < initialLength, 120);
+  },
+
+  async captureDeliveryPaymentByAdmin(
+    orderId: string,
+    payload: {
+      confirmedDeliveryTime?: string | null;
+      restaurantNote?: string | null;
+      nextStatus?: OrderStatus | null;
+    },
+  ): Promise<Order | undefined> {
+    if (supabaseClient) {
+      await callOrderStripeAction('/api/capture-payment', {
+        orderId,
+        actor: 'admin_accept',
+        confirmedDeliveryTime: payload.confirmedDeliveryTime ?? null,
+        restaurantNote: payload.restaurantNote ?? null,
+        nextStatus: payload.nextStatus ?? null,
+      });
+      return this.getOrderById(orderId);
+    }
+
+    orderStore = orderStore.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            paymentStatus: 'paid',
+            capturedAt: new Date().toISOString(),
+            status: payload.nextStatus ?? 'confirmed',
+            confirmationStatus: 'confirmed',
+            customerConfirmationRequired: false,
+            proposedTime: undefined,
+            desiredTime:
+              payload.confirmedDeliveryTime ?? order.proposedTime ?? order.desiredTime,
+            confirmedDeliveryTime:
+              payload.confirmedDeliveryTime ?? order.proposedTime ?? order.desiredTime,
+            restaurantNote: payload.restaurantNote ?? order.restaurantNote,
+          }
+        : order,
+    );
+    return simulateAsync(orderStore.find((order) => order.id === orderId));
+  },
+
+  async cancelAuthorizedPaymentByAdmin(
+    orderId: string,
+    payload?: {
+      restaurantNote?: string | null;
+      cancellationReason?: string | null;
+    },
+  ): Promise<Order | undefined> {
+    if (supabaseClient) {
+      await callOrderStripeAction('/api/cancel-authorized-payment', {
+        orderId,
+        actor: 'admin_cancel',
+        restaurantNote: payload?.restaurantNote ?? null,
+        cancellationReason: payload?.cancellationReason ?? null,
+      });
+      return this.getOrderById(orderId);
+    }
+
+    orderStore = orderStore.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            status: 'cancelled',
+            confirmationStatus: 'cancelled',
+            paymentStatus: order.paymentStatus === 'authorized' ? 'cancelled' : order.paymentStatus,
+            cancelledAt: new Date().toISOString(),
+            customerConfirmationRequired: false,
+            restaurantNote: payload?.restaurantNote ?? order.restaurantNote,
+            cancellationReason:
+              payload?.cancellationReason ?? 'restaurant_cancelled_delivery_request',
+          }
+        : order,
+    );
+    return simulateAsync(orderStore.find((order) => order.id === orderId));
   },
 
   async updateOrderConfirmationByAdmin(
@@ -499,36 +701,23 @@ export const orderService = {
     return simulateAsync(orderStore.find((order) => order.id === orderId));
   },
 
-  async respondToConfirmation(
+  async proposeDeliveryTimeByAdmin(
     orderId: string,
-    response: {
-      accepted: boolean;
+    updates: {
+      proposedTime: string;
+      restaurantNote?: string;
     },
   ): Promise<Order | undefined> {
     if (supabaseClient) {
-      const updatePayload = response.accepted
-        ? {
-            confirmation_status: 'confirmed' as ConfirmationStatus,
-            status: 'accepted' as OrderStatus,
-            customer_confirmation_required: false,
-            customer_confirmed_at: new Date().toISOString(),
-          }
-        : {
-            confirmation_status: 'cancelled' as ConfirmationStatus,
-            status: 'cancelled' as OrderStatus,
-            customer_confirmation_required: false,
-            customer_confirmed_at: new Date().toISOString(),
-          };
-
-      const currentOrder = await this.getOrderById(orderId);
       const { data, error } = await supabaseClient
         .from('orders')
         .update({
-          ...updatePayload,
-          desired_time: response.accepted
-            ? currentOrder?.proposedTime ?? currentOrder?.desiredTime ?? null
-            : currentOrder?.desiredTime ?? null,
-          proposed_time: response.accepted ? null : currentOrder?.proposedTime ?? null,
+          confirmation_status: 'time_adjustment_requested',
+          status: 'time_adjustment_requested',
+          proposed_time: updates.proposedTime,
+          restaurant_note: updates.restaurantNote ?? null,
+          customer_confirmation_required: true,
+          last_customer_notification_at: new Date().toISOString(),
         })
         .eq('id', orderId)
         .select(ORDER_SELECT)
@@ -544,15 +733,55 @@ export const orderService = {
       order.id === orderId
         ? {
             ...order,
-            confirmationStatus: response.accepted ? 'confirmed' : 'cancelled',
-            status: response.accepted ? 'accepted' : 'cancelled',
-            customerConfirmationRequired: false,
-            customerConfirmedAt: new Date().toISOString(),
-            desiredTime: response.accepted ? order.proposedTime ?? order.desiredTime : order.desiredTime,
-            proposedTime: response.accepted ? undefined : order.proposedTime,
+            confirmationStatus: 'time_adjustment_requested',
+            status: 'time_adjustment_requested',
+            proposedTime: updates.proposedTime,
+            restaurantNote: updates.restaurantNote ?? order.restaurantNote,
+            customerConfirmationRequired: true,
+            lastCustomerNotificationAt: new Date().toISOString(),
           }
         : order,
     );
     return simulateAsync(orderStore.find((order) => order.id === orderId));
+  },
+
+  async acceptProposedTimeByCustomer(orderId: string): Promise<Order | undefined> {
+    if (supabaseClient) {
+      await callOrderStripeAction('/api/capture-payment', {
+        orderId,
+        actor: 'customer_accept_proposed_time',
+      });
+      return this.getOrderById(orderId);
+    }
+
+    return this.respondToConfirmation(orderId, { accepted: true });
+  },
+
+  async cancelDeliveryOrderByCustomer(
+    orderId: string,
+    actor: 'customer_cancel_within_10_minutes' | 'customer_refused_proposed_time',
+  ): Promise<Order | undefined> {
+    if (supabaseClient) {
+      await callOrderStripeAction('/api/cancel-authorized-payment', {
+        orderId,
+        actor,
+      });
+      return this.getOrderById(orderId);
+    }
+
+    return this.respondToConfirmation(orderId, { accepted: false });
+  },
+
+  async respondToConfirmation(
+    orderId: string,
+    response: {
+      accepted: boolean;
+    },
+  ): Promise<Order | undefined> {
+    if (response.accepted) {
+      return this.acceptProposedTimeByCustomer(orderId);
+    }
+
+    return this.cancelDeliveryOrderByCustomer(orderId, 'customer_refused_proposed_time');
   },
 };
