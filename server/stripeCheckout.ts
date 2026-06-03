@@ -16,6 +16,11 @@ export interface StripeCheckoutRequestBody {
   payload: CheckoutPayload;
 }
 
+export interface StripeActionResult {
+  statusCode: number;
+  body: unknown;
+}
+
 interface ValidatedCheckoutRequest {
   origin: string;
   payload: CheckoutPayload;
@@ -245,12 +250,15 @@ function buildLineItems(payload: CheckoutPayload): StripeLineItem[] {
   return lineItems;
 }
 
-function readBearerToken(request: IncomingMessage) {
-  const authorization = request.headers.authorization;
+function readBearerTokenFromHeader(authorization?: string | null) {
   if (!authorization?.startsWith('Bearer ')) {
     return null;
   }
   return authorization.slice('Bearer '.length).trim() || null;
+}
+
+function readBearerToken(request: IncomingMessage) {
+  return readBearerTokenFromHeader(request.headers.authorization);
 }
 
 function createAuthedSupabaseClient(env: StripeCheckoutEnvironment, accessToken: string) {
@@ -528,79 +536,112 @@ async function syncOrderUpdate(
   }
 }
 
-export async function handleStripeCheckoutRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
+function missingStripeSecretResult(): StripeActionResult {
+  return {
+    statusCode: 500,
+    body: { error: 'STRIPE_SECRET_KEY manquant en environnement.' },
+  };
+}
+
+export async function processStripeCheckoutRequest(
+  rawBody: string,
   env: StripeCheckoutEnvironment,
-) {
+): Promise<StripeActionResult> {
   if (!env.stripeSecretKey) {
-    sendJson(response, 500, { error: 'STRIPE_SECRET_KEY manquant en environnement local.' });
-    return;
+    return missingStripeSecretResult();
   }
 
   try {
-    const raw = await readRequestBody(request);
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(rawBody);
     const validated = validateCheckoutRequest(parsed);
     const session = await createStripeCheckoutSession(env.stripeSecretKey, validated);
-    sendJson(response, 200, session);
+    return {
+      statusCode: 200,
+      body: session,
+    };
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : 'Erreur lors de la création de la session Stripe.';
-    sendJson(response, 400, { error: message });
+    return {
+      statusCode: 400,
+      body: { error: message },
+    };
   }
 }
 
-export async function handleStripeCheckoutStatusRequest(
+export async function processStripeCheckoutStatusRequest(
   requestUrl: URL,
-  response: ServerResponse,
   env: StripeCheckoutEnvironment,
-) {
+): Promise<StripeActionResult> {
   if (!env.stripeSecretKey) {
-    sendJson(response, 500, { error: 'STRIPE_SECRET_KEY manquant en environnement local.' });
-    return;
+    return missingStripeSecretResult();
   }
 
   const sessionId = requestUrl.searchParams.get('session_id');
   if (!sessionId) {
-    sendJson(response, 400, { error: 'session_id manquant.' });
-    return;
+    return {
+      statusCode: 400,
+      body: { error: 'session_id manquant.' },
+    };
   }
 
   try {
     const session = await getStripeCheckoutSession(env.stripeSecretKey, sessionId);
-    sendJson(response, 200, session);
+    return {
+      statusCode: 200,
+      body: session,
+    };
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : 'Erreur lors de la lecture de la session Stripe.';
-    sendJson(response, 400, { error: message });
+    return {
+      statusCode: 400,
+      body: { error: message },
+    };
   }
 }
 
-export async function handleCapturePaymentRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
+export async function processCapturePaymentRequest(
+  rawBody: string,
+  authorizationHeader: string | null | undefined,
   env: StripeCheckoutEnvironment,
-) {
+): Promise<StripeActionResult> {
   if (!env.stripeSecretKey) {
-    sendJson(response, 500, { error: 'STRIPE_SECRET_KEY manquant en environnement local.' });
-    return;
+    return missingStripeSecretResult();
   }
 
   try {
-    const raw = await readRequestBody(request);
-    const parsed = JSON.parse(raw) as Partial<CapturePaymentRequestBody>;
+    const parsed = JSON.parse(rawBody) as Partial<CapturePaymentRequestBody>;
     if (!parsed.orderId || !parsed.actor) {
       throw new Error('Données de capture incomplètes.');
     }
 
     if (parsed.actor === 'admin_accept') {
-      const auth = await requireAdmin(env, request);
-      const order = await fetchOrder(auth.client, parsed.orderId);
+      const accessToken = readBearerTokenFromHeader(authorizationHeader);
+      if (!accessToken) {
+        throw new Error('Session utilisateur manquante.');
+      }
+
+      const client = createAuthedSupabaseClient(env, accessToken);
+      const { data, error } = await client.auth.getUser();
+      if (error || !data.user) {
+        throw new Error('Utilisateur non authentifié.');
+      }
+
+      const { data: roles, error: roleError } = await client
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id);
+
+      if (roleError || !roles?.some((row) => row.role === 'admin' || row.role === 'super_admin')) {
+        throw new Error('Accès admin requis.');
+      }
+
+      const order = await fetchOrder(client, parsed.orderId);
       ensureOrderSupportsDeliveryFlow(order);
 
       const confirmedTime = getConfirmedDeliveryTime(order, parsed.confirmedDeliveryTime);
@@ -612,14 +653,14 @@ export async function handleCapturePaymentRequest(
         try {
           await capturePaymentIntent(env.stripeSecretKey, order.stripe_payment_intent_id);
         } catch (error) {
-          await syncOrderUpdate(auth.client, order.id, {
+          await syncOrderUpdate(client, order.id, {
             payment_status: 'capture_failed',
           });
           throw error;
         }
       }
 
-      await syncOrderUpdate(auth.client, order.id, {
+      await syncOrderUpdate(client, order.id, {
         payment_status: 'paid',
         captured_at: getNowIso(),
         status: parsed.nextStatus ?? 'confirmed',
@@ -632,17 +673,29 @@ export async function handleCapturePaymentRequest(
         last_customer_notification_at: getNowIso(),
       });
 
-      sendJson(response, 200, { ok: true, orderId: order.id });
-      return;
+      return {
+        statusCode: 200,
+        body: { ok: true, orderId: order.id },
+      };
     }
 
-    const auth = await getAuthenticatedUser(env, request);
-    const order = await fetchOrder(auth.client, parsed.orderId);
+    const accessToken = readBearerTokenFromHeader(authorizationHeader);
+    if (!accessToken) {
+      throw new Error('Session utilisateur manquante.');
+    }
+
+    const client = createAuthedSupabaseClient(env, accessToken);
+    const { data, error } = await client.auth.getUser();
+    if (error || !data.user) {
+      throw new Error('Utilisateur non authentifié.');
+    }
+
+    const order = await fetchOrder(client, parsed.orderId);
     ensureOrderSupportsDeliveryFlow(order);
 
     const ownsOrder =
-      order.user_id === auth.user.id ||
-      (order.customer_email && order.customer_email === auth.user.email);
+      order.user_id === data.user.id ||
+      (order.customer_email && order.customer_email === data.user.email);
 
     if (!ownsOrder) {
       throw new Error('Commande introuvable pour ce compte.');
@@ -664,14 +717,14 @@ export async function handleCapturePaymentRequest(
       try {
         await capturePaymentIntent(env.stripeSecretKey, order.stripe_payment_intent_id);
       } catch (error) {
-        await syncOrderUpdate(auth.client, order.id, {
+        await syncOrderUpdate(client, order.id, {
           payment_status: 'capture_failed',
         });
         throw error;
       }
     }
 
-    await syncOrderUpdate(auth.client, order.id, {
+    await syncOrderUpdate(client, order.id, {
       payment_status: 'paid',
       captured_at: getNowIso(),
       status: 'confirmed',
@@ -684,46 +737,68 @@ export async function handleCapturePaymentRequest(
       last_customer_notification_at: getNowIso(),
     });
 
-    sendJson(response, 200, { ok: true, orderId: order.id });
+    return {
+      statusCode: 200,
+      body: { ok: true, orderId: order.id },
+    };
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : 'Erreur lors de la capture du paiement.';
-    sendJson(response, 400, { error: message });
+    return {
+      statusCode: 400,
+      body: { error: message },
+    };
   }
 }
 
-export async function handleCancelAuthorizedPaymentRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
+export async function processCancelAuthorizedPaymentRequest(
+  rawBody: string,
+  authorizationHeader: string | null | undefined,
   env: StripeCheckoutEnvironment,
-) {
+): Promise<StripeActionResult> {
   if (!env.stripeSecretKey) {
-    sendJson(response, 500, { error: 'STRIPE_SECRET_KEY manquant en environnement local.' });
-    return;
+    return missingStripeSecretResult();
   }
 
   try {
-    const raw = await readRequestBody(request);
-    const parsed = JSON.parse(raw) as Partial<CancelAuthorizedPaymentRequestBody>;
+    const parsed = JSON.parse(rawBody) as Partial<CancelAuthorizedPaymentRequestBody>;
     if (!parsed.orderId || !parsed.actor) {
       throw new Error('Données d’annulation incomplètes.');
     }
 
     const now = new Date();
     const nowIso = now.toISOString();
+    const accessToken = readBearerTokenFromHeader(authorizationHeader);
+    if (!accessToken) {
+      throw new Error('Session utilisateur manquante.');
+    }
+
+    const client = createAuthedSupabaseClient(env, accessToken);
+    const { data, error } = await client.auth.getUser();
+    if (error || !data.user) {
+      throw new Error('Utilisateur non authentifié.');
+    }
 
     if (parsed.actor === 'admin_cancel') {
-      const auth = await requireAdmin(env, request);
-      const order = await fetchOrder(auth.client, parsed.orderId);
+      const { data: roles, error: roleError } = await client
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', data.user.id);
+
+      if (roleError || !roles?.some((row) => row.role === 'admin' || row.role === 'super_admin')) {
+        throw new Error('Accès admin requis.');
+      }
+
+      const order = await fetchOrder(client, parsed.orderId);
       ensureOrderSupportsDeliveryFlow(order);
 
       if (order.payment_status === 'authorized' && order.stripe_payment_intent_id) {
         await cancelPaymentIntent(env.stripeSecretKey, order.stripe_payment_intent_id);
       }
 
-      await syncOrderUpdate(auth.client, order.id, {
+      await syncOrderUpdate(client, order.id, {
         status: 'cancelled',
         confirmation_status: 'cancelled',
         payment_status:
@@ -736,17 +811,18 @@ export async function handleCancelAuthorizedPaymentRequest(
         last_customer_notification_at: nowIso,
       });
 
-      sendJson(response, 200, { ok: true, orderId: order.id });
-      return;
+      return {
+        statusCode: 200,
+        body: { ok: true, orderId: order.id },
+      };
     }
 
-    const auth = await getAuthenticatedUser(env, request);
-    const order = await fetchOrder(auth.client, parsed.orderId);
+    const order = await fetchOrder(client, parsed.orderId);
     ensureOrderSupportsDeliveryFlow(order);
 
     const ownsOrder =
-      order.user_id === auth.user.id ||
-      (order.customer_email && order.customer_email === auth.user.email);
+      order.user_id === data.user.id ||
+      (order.customer_email && order.customer_email === data.user.email);
 
     if (!ownsOrder) {
       throw new Error('Commande introuvable pour ce compte.');
@@ -782,7 +858,7 @@ export async function handleCancelAuthorizedPaymentRequest(
       );
     }
 
-    await syncOrderUpdate(auth.client, order.id, {
+    await syncOrderUpdate(client, order.id, {
       status: 'cancelled',
       confirmation_status: 'cancelled',
       payment_status:
@@ -799,35 +875,58 @@ export async function handleCancelAuthorizedPaymentRequest(
       last_customer_notification_at: nowIso,
     });
 
-    sendJson(response, 200, { ok: true, orderId: order.id });
+    return {
+      statusCode: 200,
+      body: { ok: true, orderId: order.id },
+    };
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : 'Erreur lors de l’annulation du paiement autorisé.';
-    sendJson(response, 400, { error: message });
+    return {
+      statusCode: 400,
+      body: { error: message },
+    };
   }
 }
 
-export async function handleRefundPaymentRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
+export async function processRefundPaymentRequest(
+  rawBody: string,
+  authorizationHeader: string | null | undefined,
   env: StripeCheckoutEnvironment,
-) {
+): Promise<StripeActionResult> {
   if (!env.stripeSecretKey) {
-    sendJson(response, 500, { error: 'STRIPE_SECRET_KEY manquant en environnement local.' });
-    return;
+    return missingStripeSecretResult();
   }
 
   try {
-    const auth = await requireAdmin(env, request);
-    const raw = await readRequestBody(request);
-    const parsed = JSON.parse(raw) as Partial<RefundPaymentRequestBody>;
+    const accessToken = readBearerTokenFromHeader(authorizationHeader);
+    if (!accessToken) {
+      throw new Error('Session utilisateur manquante.');
+    }
+
+    const client = createAuthedSupabaseClient(env, accessToken);
+    const { data, error } = await client.auth.getUser();
+    if (error || !data.user) {
+      throw new Error('Utilisateur non authentifié.');
+    }
+
+    const { data: roles, error: roleError } = await client
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', data.user.id);
+
+    if (roleError || !roles?.some((row) => row.role === 'admin' || row.role === 'super_admin')) {
+      throw new Error('Accès admin requis.');
+    }
+
+    const parsed = JSON.parse(rawBody) as Partial<RefundPaymentRequestBody>;
     if (!parsed.orderId) {
       throw new Error('orderId manquant.');
     }
 
-    const order = await fetchOrder(auth.client, parsed.orderId);
+    const order = await fetchOrder(client, parsed.orderId);
     if (!order.stripe_payment_intent_id) {
       throw new Error('Aucun paiement Stripe à rembourser.');
     }
@@ -838,7 +937,7 @@ export async function handleRefundPaymentRequest(
       parsed.reason,
     );
 
-    await syncOrderUpdate(auth.client, order.id, {
+    await syncOrderUpdate(client, order.id, {
       payment_status: refund.status === 'succeeded' ? 'refunded' : 'refund_failed',
       refund_id: refund.id ?? null,
       refund_status: refund.status ?? 'failed',
@@ -847,15 +946,78 @@ export async function handleRefundPaymentRequest(
       confirmation_status: 'cancelled',
     });
 
-    sendJson(response, 200, {
-      ok: true,
-      orderId: order.id,
-      refundId: refund.id ?? null,
-      refundStatus: refund.status ?? null,
-    });
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        orderId: order.id,
+        refundId: refund.id ?? null,
+        refundStatus: refund.status ?? null,
+      },
+    };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Erreur lors du remboursement Stripe.';
-    sendJson(response, 400, { error: message });
+    return {
+      statusCode: 400,
+      body: { error: message },
+    };
   }
+}
+
+export async function handleStripeCheckoutRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  env: StripeCheckoutEnvironment,
+) {
+  const result = await processStripeCheckoutRequest(await readRequestBody(request), env);
+  sendJson(response, result.statusCode, result.body);
+}
+
+export async function handleStripeCheckoutStatusRequest(
+  requestUrl: URL,
+  response: ServerResponse,
+  env: StripeCheckoutEnvironment,
+) {
+  const result = await processStripeCheckoutStatusRequest(requestUrl, env);
+  sendJson(response, result.statusCode, result.body);
+}
+
+export async function handleCapturePaymentRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  env: StripeCheckoutEnvironment,
+) {
+  const result = await processCapturePaymentRequest(
+    await readRequestBody(request),
+    request.headers.authorization,
+    env,
+  );
+  sendJson(response, result.statusCode, result.body);
+}
+
+export async function handleCancelAuthorizedPaymentRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  env: StripeCheckoutEnvironment,
+) {
+  const result = await processCancelAuthorizedPaymentRequest(
+    await readRequestBody(request),
+    request.headers.authorization,
+    env,
+  );
+  sendJson(response, result.statusCode, result.body);
+}
+
+export async function handleRefundPaymentRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  env: StripeCheckoutEnvironment,
+) {
+  const result = await processRefundPaymentRequest(
+    await readRequestBody(request),
+    request.headers.authorization,
+    env,
+  );
+  sendJson(response, result.statusCode, result.body);
 }

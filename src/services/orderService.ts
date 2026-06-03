@@ -149,7 +149,17 @@ async function callOrderStripeAction<T extends object>(path: string, body: Recor
     body: JSON.stringify(body),
   });
 
-  const data = (await response.json()) as T | { error?: string; message?: string };
+  const text = await response.text();
+  const data = text
+    ? (() => {
+        try {
+          return JSON.parse(text) as T | { error?: string; message?: string };
+        } catch {
+          return { error: text };
+        }
+      })()
+    : {};
+
   if (!response.ok) {
     const message =
       'message' in data

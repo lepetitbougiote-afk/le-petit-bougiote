@@ -26,6 +26,21 @@ interface SessionStatusResponse {
   captureMethod?: string | null;
 }
 
+async function readApiResponse<T>(response: Response): Promise<T | { message?: string; error?: string }> {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text) as T | { message?: string; error?: string };
+  } catch {
+    return {
+      error: text,
+    };
+  }
+}
+
 type SuccessState =
   | { status: 'loading' }
   | { status: 'ready'; order: Order }
@@ -54,9 +69,7 @@ export default function CheckoutSuccessPage() {
         const statusResponse = await fetch(
           `/api/checkout-session-status?session_id=${encodeURIComponent(sessionId)}`,
         );
-        const statusData = (await statusResponse.json()) as
-          | SessionStatusResponse
-          | { message?: string; error?: string };
+        const statusData = await readApiResponse<SessionStatusResponse>(statusResponse);
 
         if (!statusResponse.ok || !('id' in statusData) || !statusData.id) {
           const message =

@@ -23,6 +23,21 @@ interface CheckoutSessionResponse {
   url: string;
 }
 
+async function readApiResponse<T>(response: Response): Promise<T | { error?: string; message?: string }> {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text) as T | { error?: string; message?: string };
+  } catch {
+    return {
+      error: text,
+    };
+  }
+}
+
 export default function CheckoutPage() {
   const { user } = useAuth();
   const {
@@ -163,9 +178,7 @@ export default function CheckoutPage() {
         }),
       });
 
-      const data = (await response.json()) as
-        | CheckoutSessionResponse
-        | { error?: string; message?: string };
+      const data = await readApiResponse<CheckoutSessionResponse>(response);
 
       if (!response.ok || !('id' in data) || !data.id || !('url' in data) || !data.url) {
         const message =
