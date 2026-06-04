@@ -7,12 +7,7 @@ export type DayName =
   | 'Samedi'
   | 'Dimanche';
 
-export type CategorySlug =
-  | 'burgers'
-  | 'accompagnements'
-  | 'desserts-gourmandises'
-  | 'boissons'
-  | 'petit-dejeuner-formules';
+export type CategorySlug = string;
 
 export type GalleryCategory =
   | 'Burgers'

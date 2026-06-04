@@ -8,6 +8,7 @@ import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useCart } from '../../contexts/CartContext';
+import type { MenuCardConfig } from '../../data/menuCards';
 import { formatPrice } from '../../lib/utils';
 import { menuService } from '../../services/menuService';
 import type { CartItem, Product, ProductChoiceOption, ProductConfigurator } from '../../types';
@@ -23,6 +24,7 @@ type MenuSectionKey =
   | 'desserts'
   | 'gourmandises'
   | 'petit-dejeuner'
+  | 'boissons-chaudes-simples'
   | 'cafes-classiques'
   | 'boissons-gourmandes'
   | 'smoothies'
@@ -41,17 +43,12 @@ type MenuSection = {
 };
 
 type MenuCard = {
-  key:
-    | 'burgers'
-    | 'accompagnements'
-    | 'boissons-chaudes'
-    | 'boissons-froides'
-    | 'douceurs';
+  key: string;
   title: string;
   description: string;
   image?: string;
   imageAlt?: string;
-  sectionKeys: MenuSectionKey[];
+  sectionKeys: MenuCardConfig['sectionKeys'];
   hidden?: boolean;
 };
 
@@ -95,11 +92,22 @@ function getConfiguratorGroup(configurator: ProductConfigurator | undefined, exp
   );
 }
 
+function getSimpleProducts(products: Product[], categoryId: string) {
+  return products
+    .filter((product) => product.categoryId === categoryId && (product.productType ?? 'simple') === 'simple')
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function hasSectionTag(product: Product, sectionTag: string) {
+  return product.tags.includes(sectionTag);
+}
+
 export default function MenuPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [configurators, setConfigurators] = useState<Record<string, ProductConfigurator>>({});
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [menuCards, setMenuCards] = useState<MenuCardConfig[]>([]);
   const [serviceMode, setServiceMode] = useState<MenuServiceMode>(() => getModeFromSearchParam(searchParams.get('service')));
   const [openCardKey, setOpenCardKey] = useState<MenuCard['key'] | null>(null);
   const [simpleSelections, setSimpleSelections] = useState<Record<string, QuantityMap>>({});
@@ -110,6 +118,7 @@ export default function MenuPage() {
 
   useEffect(() => {
     void menuService.getProducts().then(setProducts);
+    void menuService.getMenuCards().then(setMenuCards);
     void Promise.all([
       menuService.getProductConfigurator('burgers-beef'),
       menuService.getProductConfigurator('desserts'),
@@ -143,6 +152,15 @@ export default function MenuPage() {
     const gourmetProduct = productById.get('prod-group-boissons-gourmandes');
     const smoothiesProduct = productById.get('prod-group-smoothies');
     const formuleProduct = productById.get('prod-formule-gourmande');
+    const accompagnementsProducts = getSimpleProducts(products, 'cat-accompagnements');
+    const petitDejeunerProducts = getSimpleProducts(products, 'cat-petit-dejeuner-formules');
+    const boissonsBoissonsSimples = getSimpleProducts(products, 'cat-boissons');
+    const boissonsChaudesSimplesProducts = boissonsBoissonsSimples.filter((product) =>
+      hasSectionTag(product, 'section-boissons-chaudes'),
+    );
+    const boissonsFroidesProducts = boissonsBoissonsSimples.filter((product) =>
+      !hasSectionTag(product, 'section-boissons-chaudes'),
+    );
 
     return [
       {
@@ -158,9 +176,7 @@ export default function MenuPage() {
         title: 'Accompagnements',
         description: 'Salades, frites et petites assiettes à ajouter selon l’envie.',
         kind: 'simple',
-        products: ['prod-cesar', 'prod-medit', 'prod-frites', 'prod-petite-salade']
-          .map((id) => productById.get(id))
-          .filter(Boolean) as Product[],
+        products: accompagnementsProducts,
       },
       {
         key: 'desserts',
@@ -183,9 +199,7 @@ export default function MenuPage() {
         title: 'Petit-déjeuner',
         description: 'Les formules du matin, simples et rapides.',
         kind: 'simple',
-        products: ['prod-formule-express', 'prod-formule-classic', 'prod-formule-pdj']
-          .map((id) => productById.get(id))
-          .filter(Boolean) as Product[],
+        products: petitDejeunerProducts,
       },
       {
         key: 'cafes-classiques',
@@ -194,6 +208,13 @@ export default function MenuPage() {
         kind: 'options',
         product: cafesProduct,
         configurator: configurators['cafes-classiques'],
+      },
+      {
+        key: 'boissons-chaudes-simples',
+        title: 'Boissons chaudes',
+        description: 'Les boissons chaudes simples à ajouter rapidement.',
+        kind: 'simple',
+        products: boissonsChaudesSimplesProducts,
       },
       {
         key: 'boissons-gourmandes',
@@ -223,9 +244,7 @@ export default function MenuPage() {
         title: 'Boissons froides',
         description: 'Les boissons fraîches à ajouter simplement à la commande.',
         kind: 'simple',
-        products: ['prod-eau', 'prod-eau-gazeuse', 'prod-soda', 'prod-jus', 'prod-biere-sans-alcool']
-          .map((id) => productById.get(id))
-          .filter(Boolean) as Product[],
+        products: boissonsFroidesProducts,
       },
     ].filter((section) => {
       if (section.kind === 'simple') {
@@ -251,58 +270,41 @@ export default function MenuPage() {
       sectionByKey.get('boissons-froides')?.products?.[0];
     const dessertsImageSource =
       sectionByKey.get('desserts')?.product ?? sectionByKey.get('gourmandises')?.product;
-    return [
-      {
-        key: 'burgers',
-        title: 'Burgers',
-        description: 'Toutes les recettes burgers regroupées dans une seule fiche.',
+    const imageSourceByCardKey: Record<string, { image?: string; imageAlt?: string }> = {
+      burgers: {
         image: burgerSection?.product?.image,
         imageAlt: burgerSection?.product?.imageAlt,
-        sectionKeys: ['burgers'],
-        hidden: !burgerSection,
       },
-      {
-        key: 'accompagnements',
-        title: 'Accompagnements',
-        description: 'Salades, frites et petites assiettes dans une seule fiche.',
+      accompagnements: {
         image: accompagnementsSection?.products?.[0]?.image,
         imageAlt: accompagnementsSection?.products?.[0]?.imageAlt,
-        sectionKeys: ['accompagnements'],
-        hidden: !accompagnementsSection,
       },
-      {
-        key: 'boissons-froides',
-        title: 'Boissons froides',
-        description: 'Smoothies et boissons fraîches réunis dans une seule fiche.',
+      'boissons-froides': {
         image: boissonsFroidesImageSource?.image,
         imageAlt: boissonsFroidesImageSource?.imageAlt,
-        sectionKeys: ['smoothies', 'boissons-froides'],
-        hidden: !sectionByKey.get('boissons-froides') && !sectionByKey.get('smoothies'),
       },
-      {
-        key: 'boissons-chaudes',
-        title: 'Boissons chaudes',
-        description: 'Cafés classiques, boissons gourmandes, petit-déjeuner et formule gourmande dans une seule fiche.',
+      'boissons-chaudes': {
         image: boissonsChaudesImageSource?.image,
         imageAlt: boissonsChaudesImageSource?.imageAlt,
-        sectionKeys: ['petit-dejeuner', 'cafes-classiques', 'boissons-gourmandes'],
-        hidden:
-          !sectionByKey.get('cafes-classiques') &&
-          !sectionByKey.get('boissons-gourmandes') &&
-          !sectionByKey.get('petit-dejeuner') &&
-          !sectionByKey.get('formule-gourmande'),
       },
-      {
-        key: 'douceurs',
-        title: 'Desserts & gourmandises',
-        description: 'Desserts à l’assiette et douceurs regroupés dans la même fiche.',
+      douceurs: {
         image: dessertsImageSource?.image,
         imageAlt: dessertsImageSource?.imageAlt,
-        sectionKeys: ['desserts', 'gourmandises'],
-        hidden: !sectionByKey.get('desserts') && !sectionByKey.get('gourmandises'),
       },
-    ].filter((card) => !card.hidden);
-  }, [sectionByKey]);
+    };
+
+    return menuCards
+      .map((card) => ({
+        key: card.key,
+        title: card.title,
+        description: card.description,
+        sectionKeys: card.sectionKeys,
+        image: imageSourceByCardKey[card.key]?.image,
+        imageAlt: imageSourceByCardKey[card.key]?.imageAlt,
+        hidden: !card.sectionKeys.some((sectionKey) => sectionByKey.has(sectionKey)),
+      }))
+      .filter((card) => !card.hidden);
+  }, [menuCards, sectionByKey]);
 
   const openCard = cards.find((card) => card.key === openCardKey) ?? null;
 
@@ -513,6 +515,7 @@ export default function MenuPage() {
               const menuUpgradeDisabled = option.meta?.menuUpgradeDisabled === true;
               const standaloneLabel =
                 typeof option.meta?.standaloneLabel === 'string' ? option.meta.standaloneLabel : 'Seul';
+              const badgeLabel = typeof option.meta?.badge === 'string' ? option.meta.badge : '';
               const availabilityNote = getOptionAvailabilityNote(option);
               const isAvailable = isOptionAvailable(option);
               return (
@@ -521,6 +524,11 @@ export default function MenuPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-3">
                         <p className="text-xl font-semibold text-slate-950">{option.name}</p>
+                        {badgeLabel ? (
+                          <span className="rounded-full bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-deepgreen">
+                            {badgeLabel}
+                          </span>
+                        ) : null}
                         {!isAvailable ? (
                           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                             Indisponible

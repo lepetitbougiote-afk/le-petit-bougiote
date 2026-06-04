@@ -64,4 +64,5 @@ export const productImageMap: Record<string, ProductImageConfig> = {
   'prod-soda': brandedDrinkPlaceholder('Boisson froide Le Petit Bougiote'),
   'prod-jus': brandedDrinkPlaceholder('Boisson froide Le Petit Bougiote'),
   'prod-biere-sans-alcool': brandedDrinkPlaceholder('Logo Le Petit Bougiote Coffee & Burger'),
+  'prod-verre-de-the': brandedDrinkPlaceholder('Verre de the froid Le Petit Bougiote'),
 };

@@ -25,7 +25,7 @@ where fulfillment_type = 'delivery'
   and requested_delivery_time is null;
 
 update public.orders
-set customer_can_cancel_until = created_at + interval '10 minutes'
+set customer_can_cancel_until = created_at + interval '5 minutes'
 where fulfillment_type = 'delivery'
   and customer_can_cancel_until is null;
 
@@ -39,4 +39,6 @@ for update using (
     status in ('pending', 'pending_payment', 'awaiting_restaurant_confirmation', 'time_adjustment_requested')
     or confirmation_status = 'time_adjustment_requested'
   )
+) with check (
+  auth.uid() = user_id or customer_email = auth.jwt() ->> 'email'
 );

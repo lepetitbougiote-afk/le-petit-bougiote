@@ -30,6 +30,7 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.user_roles enable row level security;
 alter table public.categories enable row level security;
+alter table public.menu_cards enable row level security;
 alter table public.products enable row level security;
 alter table public.product_images enable row level security;
 alter table public.product_option_groups enable row level security;
@@ -44,6 +45,9 @@ alter table public.analytics_events enable row level security;
 alter table public.admin_logs enable row level security;
 
 create policy "public read active categories" on public.categories
+for select using (is_active = true);
+
+create policy "public read active menu cards" on public.menu_cards
 for select using (is_active = true);
 
 create policy "public read active products" on public.products
@@ -95,6 +99,8 @@ for update using (
     status in ('pending', 'pending_payment', 'awaiting_restaurant_confirmation', 'time_adjustment_requested')
     or confirmation_status = 'time_adjustment_requested'
   )
+) with check (
+  auth.uid() = user_id or customer_email = auth.jwt() ->> 'email'
 );
 
 create policy "customers read own order items" on public.order_items
@@ -110,6 +116,9 @@ create policy "customers insert order items" on public.order_items
 for insert with check (true);
 
 create policy "admins manage categories" on public.categories
+for all using (public.is_admin()) with check (public.is_admin());
+
+create policy "admins manage menu cards" on public.menu_cards
 for all using (public.is_admin()) with check (public.is_admin());
 
 create policy "admins manage profiles" on public.profiles

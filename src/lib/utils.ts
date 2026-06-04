@@ -144,6 +144,18 @@ export function getPostLoginPath(profile: Pick<UserProfile, 'phone' | 'address' 
   return needsProfileCompletion(profile) ? '/compte?complete=1' : '/compte';
 }
 
+export function sanitizeRedirectPath(path: string | null | undefined) {
+  if (!path) {
+    return null;
+  }
+
+  if (!path.startsWith('/') || path.startsWith('//')) {
+    return null;
+  }
+
+  return path;
+}
+
 const DELIVERY_RESTRICTED_PRODUCT_IDS = new Set([
   'prod-formule-express',
   'prod-formule-classic',

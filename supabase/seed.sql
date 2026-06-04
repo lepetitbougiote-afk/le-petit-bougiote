@@ -41,12 +41,20 @@ insert into public.categories (name, slug, description, sort_order, is_active) v
   ('Petit-déjeuner & formules', 'petit-dejeuner-formules', 'Petit-déjeuner et formules à retrouver dans une sélection simple et pratique.', 5, true)
 on conflict (slug) do nothing;
 
+insert into public.menu_cards (key, title, description, section_keys, sort_order, is_active) values
+  ('burgers', 'Burgers', 'Toutes les recettes burgers regroupées dans une seule fiche.', '{"burgers"}', 1, true),
+  ('accompagnements', 'Accompagnements', 'Salades, frites et petites assiettes dans une seule fiche.', '{"accompagnements"}', 2, true),
+  ('boissons-froides', 'Boissons froides', 'Smoothies et boissons fraîches réunis dans une seule fiche.', '{"smoothies","boissons-froides"}', 3, true),
+  ('boissons-chaudes', 'Boissons chaudes', 'Cafés classiques, boissons gourmandes, petit-déjeuner et formule gourmande dans une seule fiche.', '{"petit-dejeuner","cafes-classiques","boissons-chaudes-simples","boissons-gourmandes","formule-gourmande"}', 4, true),
+  ('douceurs', 'Desserts & gourmandises', 'Desserts à l’assiette et douceurs regroupés dans la même fiche.', '{"desserts","gourmandises"}', 5, true)
+on conflict (key) do nothing;
+
 with ids as (
   select id, slug from public.categories
 )
 insert into public.products (category_id, name, slug, description, price, price_label, product_type, configurator_key, is_available, availability_note, is_active, tags, sort_order)
 values
-  ((select id from ids where slug = 'burgers'), 'Burgers', 'burgers-boeuf', 'Choisissez ensuite Classic, Alpin, Magret, Texan, Chèvre, Bombay, Veggie, Cheese, Cajun ou Chicken.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-beef', true, null, true, '{"group","burger"}', 1),
+  ((select id from ids where slug = 'burgers'), 'Burgers', 'burgers-boeuf', 'Choisissez ensuite Alpin, Classic, Magret, Texan, Chèvre, Bombay, Veggie, Cheese, Cajun, Chicken, Le Bougiote ou le menu enfants.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-beef', true, null, true, '{"group","burger"}', 1),
   ((select id from ids where slug = 'burgers'), 'Burgers poulet', 'burgers-poulet', 'Ancien groupe fusionné dans la carte burgers.', 8.90, 'À partir de 8,90 €', 'configurable', 'burgers-chicken', false, null, false, '{"group","poulet"}', 2),
   ((select id from ids where slug = 'accompagnements'), 'César', 'cesar', 'Iceberg, croûtons, poulet, copeaux de parmesan, oignon, sauce césar.', 10.90, null, 'simple', null, true, null, true, '{"salade"}', 1),
   ((select id from ids where slug = 'accompagnements'), 'Médit', 'medit', 'Feuille, aubergine, feta, groseilles, noix, vinaigre balsamique.', 10.90, null, 'simple', null, true, null, true, '{"salade"}', 2),
@@ -54,17 +62,18 @@ values
   ((select id from ids where slug = 'accompagnements'), 'Petite salade', 'petite-salade', 'Salade, tomates, oignons frits.', 1.50, null, 'simple', null, true, null, true, '{"accompagnement"}', 4),
   ((select id from ids where slug = 'desserts-gourmandises'), 'Desserts', 'desserts', 'Choisissez ensuite cheesecake, carrot cake, flan coco choco, crumble fruits rouges ou apple tart.', 3.90, 'À partir de 3,90 €', 'configurable', 'desserts', true, null, true, '{"group","dessert"}', 1),
   ((select id from ids where slug = 'desserts-gourmandises'), 'Gourmandises', 'gourmandises', 'Choisissez ensuite cookie, brownie, croissant, pain au chocolat, muffin, donut ou browkie.', 2.40, 'À partir de 2,40 €', 'configurable', 'gourmandises', true, null, true, '{"group","gourmandise"}', 2),
-  ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule express', 'formule-express', 'Expresso + 1 viennoiserie.', 2.20, null, 'simple', null, true, null, true, '{"pdj"}', 1),
+  ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule express', 'formule-express', 'Expresso / Déca / Café allongé + 1 viennoiserie.', 2.20, null, 'simple', null, true, null, true, '{"pdj"}', 1),
   ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule classic', 'formule-classic', 'Double expresso / café crème / thé + 1 viennoiserie.', 3.20, null, 'simple', null, true, null, true, '{"pdj"}', 2),
   ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule PDJ', 'formule-pdj', 'Double expresso / café crème / thé + 1 viennoiserie + jus d’orange.', 4.80, null, 'simple', null, true, null, true, '{"pdj"}', 3),
   ((select id from ids where slug = 'boissons'), 'Cafés classiques', 'cafes-classiques', 'Choisissez ensuite votre café classique.', 1.50, 'À partir de 1,50 €', 'configurable', 'cafes-classiques', true, null, true, '{"group","cafe"}', 1),
   ((select id from ids where slug = 'boissons'), 'Boissons gourmandes', 'boissons-gourmandes', 'Choisissez votre boisson gourmande préférée.', 3.50, 'À partir de 3,50 €', 'configurable', 'boissons-gourmandes', true, null, true, '{"group","boisson-gourmande"}', 2),
   ((select id from ids where slug = 'petit-dejeuner-formules'), 'Formule gourmande', 'formule-gourmande', 'Boisson gourmande au choix + pâtisserie éligible.', 5.90, null, 'configurable', 'formule-gourmande', true, null, true, '{"group","formule"}', 4),
-  ((select id from ids where slug = 'boissons'), 'Eau', 'eau', 'Bouteille d’eau.', 1.00, null, 'simple', null, true, null, true, '{"frais"}', 3),
-  ((select id from ids where slug = 'boissons'), 'Eau gazeuse', 'eau-gazeuse', 'Eau pétillante.', 1.50, null, 'simple', null, true, null, true, '{"frais"}', 4),
-  ((select id from ids where slug = 'boissons'), 'Soda', 'soda', 'Sélection de sodas.', 2.00, null, 'simple', null, true, null, true, '{"soft"}', 5),
-  ((select id from ids where slug = 'boissons'), 'Jus', 'jus', 'Jus de fruits.', 2.50, null, 'simple', null, true, null, true, '{"fruit"}', 6),
-  ((select id from ids where slug = 'boissons'), 'Bière sans alcool', 'biere-sans-alcool', 'Alternative légère.', 3.00, null, 'simple', null, true, null, true, '{"sans-alcool"}', 7)
+  ((select id from ids where slug = 'boissons'), 'Eau', 'eau', '50 cl', 1.00, null, 'simple', null, true, null, true, '{"frais"}', 3),
+  ((select id from ids where slug = 'boissons'), 'Eau gazeuse', 'eau-gazeuse', '50 cl', 1.50, null, 'simple', null, true, null, true, '{"frais"}', 4),
+  ((select id from ids where slug = 'boissons'), 'Soda', 'soda', '33 cl', 2.00, null, 'simple', null, true, null, true, '{"soft"}', 5),
+  ((select id from ids where slug = 'boissons'), 'Verre de thé', 'verre-de-the', 'Menthe / pêche / autres saveurs à venir', 2.50, null, 'simple', null, true, null, true, '{"frais","the"}', 6),
+  ((select id from ids where slug = 'boissons'), 'Jus', 'jus', '25 cl', 2.50, null, 'simple', null, true, null, true, '{"fruit"}', 7),
+  ((select id from ids where slug = 'boissons'), 'Bière sans alcool', 'biere-sans-alcool', 'Heineken — 25 cl', 3.00, null, 'simple', null, true, null, true, '{"sans-alcool"}', 8)
 on conflict (slug) do nothing;
 
 with products_cte as (
@@ -114,16 +123,18 @@ formula_groups as (
 insert into public.product_options (option_group_id, name, description, price, metadata, is_active, sort_order)
 select id, option_name, option_description, option_price, option_meta::jsonb, true, option_sort_order
 from (
-  select id, 'Alpin' as option_name, 'Boeuf, reblochon, sauce tartare.' as option_description, 12.90 as option_price, '{}' as option_meta, 1 as option_sort_order from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Classic', 'Boeuf, comté, sauce biggy.', 10.90, '{}', 2 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Magret', 'Magret de canard, sauce poivre.', 14.90, '{}', 3 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Texan', 'Boeuf, bacon, cheddar fumé.', 12.90, '{}', 4 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Chèvre', 'Boeuf, chèvre, noix, miel.', 12.90, '{}', 5 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Bombay', 'Poulet mariné, sauce tandoori.', 11.90, '{}', 6 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Veggie', 'Aubergine, tomates confites, chèvre.', 12.90, '{}', 7 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Cheese', 'Boeuf, cheddar et sauce maison.', 8.90, '{}', 8 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Cajun', 'Poulet, comté, sauce mayo cajun.', 11.90, '{}', 9 from burger_beef_group where name = 'Votre burger'
-  union all select id, 'Chicken', 'Poulet, cheddar et sauce maison.', 8.90, '{}', 10 from burger_beef_group where name = 'Votre burger'
+  select id, 'Le Bougiote' as option_name, 'Gambas, sauce à l’ail, salade, citron confit, cheddar, oignons crispy.' as option_description, 14.90 as option_price, '{"badge":"Burger signature"}' as option_meta, 1 as option_sort_order from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Alpin', 'Boeuf, reblochon, sauce tartare.', 12.90, '{}', 2 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Classic', 'Boeuf, comté, sauce biggy.', 10.90, '{}', 3 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Magret', 'Magret de canard, sauce poivre.', 14.90, '{}', 4 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Texan', 'Boeuf, bacon, cheddar fumé.', 12.90, '{}', 5 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Chèvre', 'Boeuf, chèvre, noix, miel.', 12.90, '{}', 6 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Bombay', 'Poulet mariné, sauce tandoori.', 11.90, '{}', 7 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Veggie', 'Aubergine, tomates confites, chèvre.', 12.90, '{}', 8 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Cheese', 'Boeuf, cheddar et sauce maison.', 8.90, '{}', 9 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Cajun', 'Poulet, comté, sauce mayo cajun.', 11.90, '{}', 10 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Chicken', 'Poulet, cheddar et sauce maison.', 8.90, '{}', 11 from burger_beef_group where name = 'Votre burger'
+  union all select id, 'Menu enfants', '5 nuggets + petite frite + 1 Capri-Sun.', 6.00, '{"menuUpgradeDisabled":true,"standaloneLabel":"Menu enfants"}', 12 from burger_beef_group where name = 'Votre burger'
   union all select id, 'Burger seul', null, 0, '{"kind":"service-format"}', 1 from burger_beef_group where name = 'Format'
   union all select id, 'Menu +3 €', 'Frites + boisson', 3.00, '{"kind":"service-format"}', 2 from burger_beef_group where name = 'Format'
   union all select id, 'Cajun', 'Poulet, comté, sauce mayo cajun.', 11.90, '{}', 1 from burger_chicken_group where name = 'Votre burger'

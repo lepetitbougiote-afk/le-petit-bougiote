@@ -135,7 +135,7 @@ async function getAccessToken() {
 }
 
 function getCancelDeadline(createdAt: string) {
-  return new Date(new Date(createdAt).getTime() + 10 * 60 * 1000).toISOString();
+  return new Date(new Date(createdAt).getTime() + 5 * 60 * 1000).toISOString();
 }
 
 async function callOrderStripeAction<T extends object>(path: string, body: Record<string, unknown>) {
@@ -727,6 +727,7 @@ export const orderService = {
           proposed_time: updates.proposedTime,
           restaurant_note: updates.restaurantNote ?? null,
           customer_confirmation_required: true,
+          customer_can_cancel_until: getCancelDeadline(new Date().toISOString()),
           last_customer_notification_at: new Date().toISOString(),
         })
         .eq('id', orderId)
@@ -748,6 +749,7 @@ export const orderService = {
             proposedTime: updates.proposedTime,
             restaurantNote: updates.restaurantNote ?? order.restaurantNote,
             customerConfirmationRequired: true,
+            customerCanCancelUntil: getCancelDeadline(new Date().toISOString()),
             lastCustomerNotificationAt: new Date().toISOString(),
           }
         : order,

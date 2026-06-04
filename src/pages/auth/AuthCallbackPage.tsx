@@ -1,10 +1,12 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
 import { useAuth } from '../../contexts/AuthContext';
-import { getPostLoginPath } from '../../lib/utils';
+import { getPostLoginPath, sanitizeRedirectPath } from '../../lib/utils';
 
 export default function AuthCallbackPage() {
   const { user, loading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const redirectPath = sanitizeRedirectPath(searchParams.get('redirect'));
 
   if (loading) {
     return (
@@ -25,5 +27,5 @@ export default function AuthCallbackPage() {
     return <Navigate to="/connexion" replace />;
   }
 
-  return <Navigate to={getPostLoginPath(user)} replace />;
+  return <Navigate to={redirectPath ?? getPostLoginPath(user)} replace />;
 }

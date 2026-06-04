@@ -138,7 +138,7 @@ export default function CheckoutSuccessPage() {
             pending.payload.fulfillmentType === 'delivery' ? null : nowIso,
           customerCanCancelUntil:
             pending.payload.fulfillmentType === 'delivery'
-              ? new Date(Date.now() + 10 * 60 * 1000).toISOString()
+              ? new Date(Date.now() + 5 * 60 * 1000).toISOString()
               : null,
         });
 

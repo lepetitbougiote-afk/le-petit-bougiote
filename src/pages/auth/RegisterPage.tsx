@@ -1,19 +1,21 @@
-import { FormEvent, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { FormEvent, useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import logoImage from '../../assets/logo.png';
 import { SEO } from '../../components/seo/SEO';
 import { useAuth } from '../../contexts/AuthContext';
-import { getPostLoginPath } from '../../lib/utils';
+import { getPostLoginPath, sanitizeRedirectPath } from '../../lib/utils';
 
 export default function RegisterPage() {
   const { register, user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const redirectPath = useMemo(() => sanitizeRedirectPath(searchParams.get('redirect')), [searchParams]);
 
   if (!loading && user) {
-    return <Navigate to={getPostLoginPath(user)} replace />;
+    return <Navigate to={redirectPath ?? getPostLoginPath(user)} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -32,7 +34,7 @@ export default function RegisterPage() {
     try {
       const profile = await register(payload);
       if (profile) {
-        navigate(getPostLoginPath(profile));
+        navigate(redirectPath ?? getPostLoginPath(profile));
         return;
       }
       setMessage('Votre compte a été créé. Vérifiez votre boîte mail si une confirmation est demandée.');
@@ -60,7 +62,7 @@ export default function RegisterPage() {
               {submitting ? 'Création...' : 'Créer le compte'}
             </button>
           </form>
-          <p className="mt-6 text-center text-sm text-slate-600">Déjà inscrit ? <Link to="/connexion" className="font-semibold text-brand-green">Connexion</Link></p>
+          <p className="mt-6 text-center text-sm text-slate-600">Déjà inscrit ? <Link to={redirectPath ? `/connexion?redirect=${encodeURIComponent(redirectPath)}` : '/connexion'} className="font-semibold text-brand-green">Connexion</Link></p>
         </div>
       </section>
     </>

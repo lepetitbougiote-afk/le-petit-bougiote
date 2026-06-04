@@ -1,3 +1,4 @@
+import { menuCardConfigs, type MenuCardConfig } from '../data/menuCards';
 import { categories, productConfiguratorMap, products } from '../data/menu';
 import { simulateAsync } from '../lib/dataProvider';
 import { supabaseClient } from '../lib/supabaseClient';
@@ -5,6 +6,7 @@ import type { Category, Product, ProductConfigurator } from '../types';
 
 let productStore = [...products];
 let configuratorStore = structuredClone(productConfiguratorMap) as Record<string, ProductConfigurator>;
+let menuCardStore = [...menuCardConfigs];
 
 const localProductBySlug = new Map(products.map((product) => [product.slug, product]));
 const localCategoryBySlug = new Map(categories.map((category) => [category.slug, category]));
@@ -40,6 +42,16 @@ type SupabaseProductRow = {
   } | null;
 };
 
+type SupabaseMenuCardRow = {
+  id: string;
+  key: string;
+  title: string;
+  description: string | null;
+  section_keys: string[];
+  sort_order: number;
+  is_active: boolean;
+};
+
 function mapCategory(row: SupabaseCategoryRow): Category {
   const fallback = localCategoryBySlug.get(row.slug);
   return {
@@ -73,6 +85,19 @@ function mapProduct(row: SupabaseProductRow): Product {
     imageFit: fallback?.imageFit,
     productType: row.product_type ?? fallback?.productType ?? 'simple',
     configuratorKey: row.configurator_key ?? fallback?.configuratorKey,
+  };
+}
+
+function mapMenuCard(row: SupabaseMenuCardRow): MenuCardConfig {
+  const fallback = menuCardConfigs.find((card) => card.key === row.key);
+  return {
+    id: fallback?.id ?? row.id,
+    key: row.key,
+    title: row.title,
+    description: row.description ?? fallback?.description ?? '',
+    sectionKeys: (row.section_keys as MenuCardConfig['sectionKeys']) ?? fallback?.sectionKeys ?? [],
+    sortOrder: row.sort_order,
+    isActive: row.is_active,
   };
 }
 
@@ -136,6 +161,47 @@ async function getSupabaseProducts(): Promise<Product[] | null> {
     }
     return product;
   });
+}
+
+async function getSupabaseMenuCards(): Promise<MenuCardConfig[] | null> {
+  if (!supabaseClient) {
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('menu_cards')
+    .select('id, key, title, description, section_keys, sort_order, is_active')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  if (error || !data?.length) {
+    return null;
+  }
+
+  return (data as SupabaseMenuCardRow[]).map(mapMenuCard);
+}
+
+async function resolveRemoteCategoryId(localCategoryId: string): Promise<string | null> {
+  if (!supabaseClient) {
+    return null;
+  }
+
+  const localCategory = categories.find((category) => category.id === localCategoryId);
+  if (!localCategory) {
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('categories')
+    .select('id')
+    .eq('slug', localCategory.slug)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data.id;
 }
 
 async function getSupabaseConfigurator(configuratorKey: string): Promise<ProductConfigurator | null> {
@@ -232,6 +298,100 @@ export const menuService = {
     );
   },
 
+  async createCategory(category: Category): Promise<Category> {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('categories')
+        .insert({
+          name: category.name,
+          slug: category.slug,
+          description: category.description,
+          sort_order: category.sortOrder,
+          is_active: category.isActive,
+        })
+        .select('id, name, slug, description, sort_order, is_active')
+        .maybeSingle();
+
+      if (!error && data) {
+        return simulateAsync(mapCategory(data as SupabaseCategoryRow), 120);
+      }
+    }
+
+    return simulateAsync(category);
+  },
+
+  async updateCategory(categoryId: string, updates: Partial<Category>): Promise<Category | undefined> {
+    const currentCategory = categories.find((category) => category.id === categoryId);
+    if (!currentCategory) {
+      return undefined;
+    }
+
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('categories')
+        .update({
+          name: updates.name ?? currentCategory.name,
+          slug: updates.slug ?? currentCategory.slug,
+          description: updates.description ?? currentCategory.description,
+          sort_order: updates.sortOrder ?? currentCategory.sortOrder,
+          is_active: updates.isActive ?? currentCategory.isActive,
+        })
+        .eq('slug', currentCategory.slug)
+        .select('id, name, slug, description, sort_order, is_active')
+        .maybeSingle();
+
+      if (!error && data) {
+        return simulateAsync(mapCategory(data as SupabaseCategoryRow), 120);
+      }
+    }
+
+    return simulateAsync({
+      ...currentCategory,
+      ...updates,
+    });
+  },
+
+  async deleteCategory(categoryId: string): Promise<{ ok: boolean; reason?: string }> {
+    const currentCategory = categories.find((category) => category.id === categoryId);
+    if (!currentCategory) {
+      return { ok: false, reason: 'Catégorie introuvable.' };
+    }
+
+    if (supabaseClient) {
+      const remoteCategoryId = await resolveRemoteCategoryId(categoryId);
+      if (!remoteCategoryId) {
+        return { ok: false, reason: 'Catégorie distante introuvable.' };
+      }
+
+      const { count, error: countError } = await supabaseClient
+        .from('products')
+        .select('id', { count: 'exact', head: true })
+        .eq('category_id', remoteCategoryId)
+        .eq('is_active', true);
+
+      if (countError) {
+        return { ok: false, reason: countError.message };
+      }
+
+      if ((count ?? 0) > 0) {
+        return { ok: false, reason: 'Retirez ou déplacez d’abord les produits de cette catégorie.' };
+      }
+
+      const { error } = await supabaseClient
+        .from('categories')
+        .delete()
+        .eq('id', remoteCategoryId);
+
+      if (!error) {
+        return { ok: true };
+      }
+
+      return { ok: false, reason: error.message };
+    }
+
+    return { ok: true };
+  },
+
   async getProducts(): Promise<Product[]> {
     const remoteProducts = await getSupabaseProducts();
     if (remoteProducts) {
@@ -241,6 +401,103 @@ export const menuService = {
     return simulateAsync(
       [...productStore].sort((a, b) => a.sortOrder - b.sortOrder),
     );
+  },
+
+  async getMenuCards(): Promise<MenuCardConfig[]> {
+    const remoteMenuCards = await getSupabaseMenuCards();
+    if (remoteMenuCards) {
+      menuCardStore = remoteMenuCards;
+      return remoteMenuCards;
+    }
+
+    return simulateAsync(
+      [...menuCardStore].filter((card) => card.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
+    );
+  },
+
+  async createMenuCard(card: MenuCardConfig): Promise<MenuCardConfig> {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('menu_cards')
+        .insert({
+          key: card.key,
+          title: card.title,
+          description: card.description,
+          section_keys: card.sectionKeys,
+          sort_order: card.sortOrder,
+          is_active: card.isActive,
+        })
+        .select('id, key, title, description, section_keys, sort_order, is_active')
+        .maybeSingle();
+
+      if (!error && data) {
+        const mapped = mapMenuCard(data as SupabaseMenuCardRow);
+        menuCardStore = [...menuCardStore, mapped].sort((a, b) => a.sortOrder - b.sortOrder);
+        return simulateAsync(mapped, 120);
+      }
+    }
+
+    menuCardStore = [...menuCardStore, card].sort((a, b) => a.sortOrder - b.sortOrder);
+    return simulateAsync(card);
+  },
+
+  async updateMenuCard(cardId: string, updates: Partial<MenuCardConfig>): Promise<MenuCardConfig | undefined> {
+    const currentCard = menuCardStore.find((card) => card.id === cardId) ?? menuCardConfigs.find((card) => card.id === cardId);
+    if (!currentCard) {
+      return undefined;
+    }
+
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('menu_cards')
+        .update({
+          key: updates.key ?? currentCard.key,
+          title: updates.title ?? currentCard.title,
+          description: updates.description ?? currentCard.description,
+          section_keys: updates.sectionKeys ?? currentCard.sectionKeys,
+          sort_order: updates.sortOrder ?? currentCard.sortOrder,
+          is_active: updates.isActive ?? currentCard.isActive,
+        })
+        .eq('key', currentCard.key)
+        .select('id, key, title, description, section_keys, sort_order, is_active')
+        .maybeSingle();
+
+      if (!error && data) {
+        const mapped = mapMenuCard(data as SupabaseMenuCardRow);
+        menuCardStore = menuCardStore
+          .map((card) => (card.id === cardId ? mapped : card))
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        return simulateAsync(mapped, 120);
+      }
+    }
+
+    const next = { ...currentCard, ...updates };
+    menuCardStore = menuCardStore
+      .map((card) => (card.id === cardId ? next : card))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    return simulateAsync(next);
+  },
+
+  async deleteMenuCard(cardId: string): Promise<boolean> {
+    const currentCard = menuCardStore.find((card) => card.id === cardId) ?? menuCardConfigs.find((card) => card.id === cardId);
+    if (!currentCard) {
+      return false;
+    }
+
+    if (supabaseClient) {
+      const { error } = await supabaseClient
+        .from('menu_cards')
+        .delete()
+        .eq('key', currentCard.key);
+
+      if (!error) {
+        menuCardStore = menuCardStore.filter((card) => card.id !== cardId);
+        return simulateAsync(true, 120);
+      }
+    }
+
+    menuCardStore = menuCardStore.filter((card) => card.id !== cardId);
+    return simulateAsync(true);
   },
 
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
@@ -265,7 +522,64 @@ export const menuService = {
   },
 
   async createProduct(product: Product): Promise<Product> {
-    // TODO: Replace with Supabase insert.
+    if (supabaseClient) {
+      const remoteCategoryId = await resolveRemoteCategoryId(product.categoryId);
+      if (remoteCategoryId) {
+        const { data, error } = await supabaseClient
+          .from('products')
+          .insert({
+            category_id: remoteCategoryId,
+            name: product.name,
+            slug: product.slug,
+            description: product.description,
+            price: product.price,
+            price_label: product.priceLabel ?? null,
+            product_type: product.productType ?? 'simple',
+            configurator_key: product.configuratorKey ?? null,
+            is_available: product.isAvailable,
+            availability_note: product.availabilityNote ?? null,
+            is_active: product.isActive,
+            tags: product.tags,
+            sort_order: product.sortOrder,
+          })
+          .select(`
+            id,
+            category_id,
+            name,
+            slug,
+            description,
+            price,
+            price_label,
+            product_type,
+            configurator_key,
+            is_available,
+            availability_note,
+            is_active,
+            tags,
+            sort_order,
+            category:categories(slug)
+          `)
+          .maybeSingle();
+
+        if (!error && data) {
+          const createdRow = data as SupabaseProductRow;
+          const mapped = mapProduct(createdRow);
+          const categoryRelation = createdRow.category;
+          const categorySlug = Array.isArray(categoryRelation)
+            ? categoryRelation[0]?.slug
+            : categoryRelation?.slug;
+          if (categorySlug) {
+            const fallbackCategory = categories.find((category) => category.slug === categorySlug);
+            if (fallbackCategory) {
+              mapped.categoryId = fallbackCategory.id;
+            }
+          }
+          productStore = [mapped, ...productStore];
+          return simulateAsync(mapped, 120);
+        }
+      }
+    }
+
     productStore = [product, ...productStore];
     return simulateAsync(product);
   },
@@ -274,15 +588,24 @@ export const menuService = {
     if (supabaseClient) {
       const currentProduct = productStore.find((product) => product.id === productId) ?? products.find((product) => product.id === productId);
       if (currentProduct) {
+        const nextCategoryId = updates.categoryId ?? currentProduct.categoryId;
+        const remoteCategoryId = await resolveRemoteCategoryId(nextCategoryId);
         const { data, error } = await supabaseClient
           .from('products')
           .update({
+            category_id: remoteCategoryId,
+            name: updates.name ?? currentProduct.name,
+            slug: updates.slug ?? currentProduct.slug,
             description: updates.description ?? currentProduct.description,
             price: updates.price ?? currentProduct.price,
             price_label: updates.priceLabel ?? currentProduct.priceLabel ?? null,
+            product_type: updates.productType ?? currentProduct.productType ?? 'simple',
+            configurator_key: updates.configuratorKey ?? currentProduct.configuratorKey ?? null,
             is_available: updates.isAvailable ?? currentProduct.isAvailable,
             availability_note: updates.availabilityNote ?? currentProduct.availabilityNote ?? null,
             is_active: updates.isActive ?? currentProduct.isActive,
+            tags: updates.tags ?? currentProduct.tags,
+            sort_order: updates.sortOrder ?? currentProduct.sortOrder,
           })
           .eq('slug', currentProduct.slug)
           .select(`
@@ -330,7 +653,21 @@ export const menuService = {
   },
 
   async deleteProduct(productId: string): Promise<boolean> {
-    // TODO: Replace with Supabase delete.
+    if (supabaseClient) {
+      const currentProduct = productStore.find((product) => product.id === productId) ?? products.find((product) => product.id === productId);
+      if (currentProduct) {
+        const { error } = await supabaseClient
+          .from('products')
+          .delete()
+          .eq('slug', currentProduct.slug);
+
+        if (!error) {
+          productStore = productStore.filter((product) => product.id !== productId);
+          return simulateAsync(true, 120);
+        }
+      }
+    }
+
     productStore = productStore.filter((product) => product.id !== productId);
     return simulateAsync(true);
   },

@@ -132,6 +132,18 @@ create table if not exists public.categories (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.menu_cards (
+  id uuid primary key default gen_random_uuid(),
+  key text not null unique,
+  title text not null,
+  description text,
+  section_keys text[] not null default '{}',
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   category_id uuid references public.categories(id) on delete set null,
@@ -208,7 +220,7 @@ create table if not exists public.orders (
   stripe_checkout_session_id text,
   authorized_at timestamptz,
   captured_at timestamptz,
-  customer_can_cancel_until timestamptz default (timezone('utc', now()) + interval '10 minutes'),
+  customer_can_cancel_until timestamptz default (timezone('utc', now()) + interval '5 minutes'),
   cancelled_at timestamptz,
   refund_id text,
   refund_status text,
@@ -305,6 +317,7 @@ create index if not exists idx_user_roles_user_id on public.user_roles(user_id);
 create index if not exists idx_products_category_id on public.products(category_id);
 create index if not exists idx_products_active_available on public.products(is_active, is_available);
 create index if not exists idx_products_configurator_key on public.products(configurator_key);
+create index if not exists idx_menu_cards_active_sort on public.menu_cards(is_active, sort_order);
 create index if not exists idx_product_option_groups_product_id on public.product_option_groups(product_id);
 create index if not exists idx_product_options_group_id on public.product_options(option_group_id);
 create index if not exists idx_orders_user_id on public.orders(user_id);
@@ -320,6 +333,7 @@ create index if not exists idx_admin_logs_admin on public.admin_logs(admin_user_
 
 create trigger set_profiles_updated_at before update on public.profiles for each row execute procedure public.set_updated_at();
 create trigger set_categories_updated_at before update on public.categories for each row execute procedure public.set_updated_at();
+create trigger set_menu_cards_updated_at before update on public.menu_cards for each row execute procedure public.set_updated_at();
 create trigger set_products_updated_at before update on public.products for each row execute procedure public.set_updated_at();
 create trigger set_orders_updated_at before update on public.orders for each row execute procedure public.set_updated_at();
 create trigger set_restaurant_settings_updated_at before update on public.restaurant_settings for each row execute procedure public.set_updated_at();

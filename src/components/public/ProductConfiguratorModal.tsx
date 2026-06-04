@@ -232,6 +232,7 @@ export function ProductConfiguratorModal({
                       const selected = selectedByGroup[group.id] === option.id;
                       const burgerSelection = burgerSelections[option.id] ?? { solo: 0, menu: 0 };
                       const isAvailable = option.isActive ?? true;
+                      const badgeLabel = typeof option.meta?.badge === 'string' ? option.meta.badge : '';
                       const availabilityNote =
                         typeof option.meta?.availabilityNote === 'string'
                           ? option.meta.availabilityNote
@@ -247,6 +248,11 @@ export function ProductConfiguratorModal({
                               <div>
                                 <div className="flex flex-wrap items-center gap-3">
                                   <p className="font-semibold text-slate-950">{option.name}</p>
+                                  {badgeLabel ? (
+                                    <span className="rounded-full bg-brand-green/10 px-3 py-1 text-xs font-semibold text-brand-deepgreen">
+                                      {badgeLabel}
+                                    </span>
+                                  ) : null}
                                   {!isAvailable ? (
                                     <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                                       Indisponible

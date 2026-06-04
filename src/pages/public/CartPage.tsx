@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
+import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { analyticsService } from '../../services/analyticsService';
 import { formatPrice, getDiningModeLabel, getFulfillmentTypeLabel } from '../../lib/utils';
 
 export default function CartPage() {
+  const { user } = useAuth();
   const {
     items,
     fulfillmentType,
@@ -21,6 +23,7 @@ export default function CartPage() {
   const continuePath = fulfillmentType === 'delivery' ? '/menu?service=delivery' : `/menu?service=${diningMode === 'a_emporter' ? 'a_emporter' : 'sur_place'}`;
   const continueLabel = fulfillmentType === 'delivery' ? 'Continuer la commande livraison' : diningMode === 'a_emporter' ? 'Continuer à emporter' : 'Continuer sur place';
   const emptyText = fulfillmentType === 'delivery' ? 'Ajoutez quelques produits depuis la carte en mode livraison.' : 'Ajoutez quelques produits depuis la carte sur place.';
+  const deliveryNeedsAccount = fulfillmentType === 'delivery' && !user;
 
   return (
     <>
@@ -130,11 +133,30 @@ export default function CartPage() {
                   <span className="font-semibold text-slate-950">En ligne bientôt</span>
                 </div>
               </div>
+              {deliveryNeedsAccount ? (
+                <div className="mt-6 rounded-[1.4rem] border border-brand-green/10 bg-brand-cream p-4 text-sm leading-7 text-slate-700">
+                  <p className="font-semibold text-slate-950">Compte requis pour la livraison</p>
+                  <p className="mt-2">
+                    Pour la livraison, nous demandons un compte client afin que vous puissiez recevoir le suivi de commande et confirmer un nouveau créneau si le restaurant doit le décaler.
+                  </p>
+                </div>
+              ) : null}
               <div className="mt-6 grid gap-3">
                 <Link to={continuePath} className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">{continueLabel}</Link>
-                <Link to="/checkout" onClick={() => analyticsService.trackCheckoutStart({ item_count: items.length, subtotal })} className="rounded-full bg-brand-green px-5 py-3 text-center text-sm font-semibold text-white">
-                  Passer au paiement
-                </Link>
+                {deliveryNeedsAccount ? (
+                  <>
+                    <Link to="/connexion?redirect=%2Fcheckout" className="rounded-full bg-brand-green px-5 py-3 text-center text-sm font-semibold text-white">
+                      Se connecter pour payer
+                    </Link>
+                    <Link to="/inscription?redirect=%2Fcheckout" className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">
+                      Créer un compte
+                    </Link>
+                  </>
+                ) : (
+                  <Link to="/checkout" onClick={() => analyticsService.trackCheckoutStart({ item_count: items.length, subtotal })} className="rounded-full bg-brand-green px-5 py-3 text-center text-sm font-semibold text-white">
+                    Passer au paiement
+                  </Link>
+                )}
               </div>
             </aside>
           </div>

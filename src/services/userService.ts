@@ -227,16 +227,20 @@ export const userService = {
     profileStore = null;
   },
 
-  async signInWithGoogle(): Promise<void> {
+  async signInWithGoogle(redirectPath?: string): Promise<void> {
     if (!supabaseClient) {
       return;
     }
 
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const callbackUrl = new URL('/auth/callback', window.location.origin);
+    if (redirectPath?.startsWith('/') && !redirectPath.startsWith('//')) {
+      callbackUrl.searchParams.set('redirect', redirectPath);
+    }
+
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo,
+        redirectTo: callbackUrl.toString(),
       },
     });
 

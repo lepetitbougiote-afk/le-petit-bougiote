@@ -1,18 +1,20 @@
-import { FormEvent, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { FormEvent, useMemo, useState } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import logoImage from '../../assets/logo.png';
 import { SEO } from '../../components/seo/SEO';
 import { useAuth } from '../../contexts/AuthContext';
-import { getPostLoginPath } from '../../lib/utils';
+import { getPostLoginPath, sanitizeRedirectPath } from '../../lib/utils';
 
 export default function LoginPage() {
   const { login, loginWithGoogle, user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const redirectPath = useMemo(() => sanitizeRedirectPath(searchParams.get('redirect')), [searchParams]);
 
   if (!loading && user) {
-    return <Navigate to={getPostLoginPath(user)} replace />;
+    return <Navigate to={redirectPath ?? getPostLoginPath(user)} replace />;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -25,7 +27,7 @@ export default function LoginPage() {
     setError('');
     try {
       const profile = await login(email, password);
-      navigate(getPostLoginPath(profile));
+      navigate(redirectPath ?? getPostLoginPath(profile));
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Connexion impossible.');
     } finally {
@@ -52,13 +54,13 @@ export default function LoginPage() {
           <div className="mt-4">
             <button
               type="button"
-              onClick={() => void loginWithGoogle()}
+              onClick={() => void loginWithGoogle(redirectPath ?? undefined)}
               className="w-full rounded-full border border-brand-green/10 bg-white px-5 py-3 text-sm font-semibold text-slate-800"
             >
               Continuer avec Google
             </button>
           </div>
-          <p className="mt-6 text-center text-sm text-slate-600">Pas encore de compte ? <Link to="/inscription" className="font-semibold text-brand-green">Créer un compte</Link></p>
+          <p className="mt-6 text-center text-sm text-slate-600">Pas encore de compte ? <Link to={redirectPath ? `/inscription?redirect=${encodeURIComponent(redirectPath)}` : '/inscription'} className="font-semibold text-brand-green">Créer un compte</Link></p>
         </div>
       </section>
     </>

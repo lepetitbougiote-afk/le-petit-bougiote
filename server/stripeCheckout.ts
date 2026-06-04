@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { CartItem, CheckoutPayload, DiningMode, FulfillmentType, OrderStatus } from '../src/types';
 
 const DELIVERY_FEE_EUR = 4;
-const TEN_MINUTES_MS = 10 * 60 * 1000;
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 export interface StripeCheckoutEnvironment {
   stripeSecretKey?: string;
@@ -157,7 +157,7 @@ function getNowIso() {
 }
 
 function getCancelDeadlineIso(createdAt: string) {
-  return new Date(new Date(createdAt).getTime() + TEN_MINUTES_MS).toISOString();
+  return new Date(new Date(createdAt).getTime() + FIVE_MINUTES_MS).toISOString();
 }
 
 function validateCheckoutRequest(input: unknown): ValidatedCheckoutRequest {
@@ -845,7 +845,7 @@ export async function processCancelAuthorizedPaymentRequest(
     if (!canCancelAutomatically) {
       throw new Error(
         parsed.actor === 'customer_cancel_within_10_minutes'
-          ? 'Le délai automatique de 10 minutes est dépassé.'
+          ? 'Le délai automatique de 5 minutes est dépassé.'
           : 'Ce créneau ne peut plus être refusé automatiquement.',
       );
     }

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,7 +39,7 @@ async function readApiResponse<T>(response: Response): Promise<T | { error?: str
 }
 
 export default function CheckoutPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const {
     items,
     fulfillmentType: cartFulfillmentType,
@@ -79,6 +79,7 @@ export default function CheckoutPage() {
     () => (isDelivery ? 'pending' : 'confirmed'),
     [isDelivery],
   );
+  const requiresDeliveryAccount = isDelivery && !loading && !user;
 
   useEffect(() => {
     if (!user || profileLoaded) {
@@ -214,6 +215,7 @@ export default function CheckoutPage() {
         description="Finalisez votre commande puis réglez-la via Stripe Checkout."
         path="/checkout"
       />
+      {requiresDeliveryAccount ? <Navigate to="/connexion?redirect=%2Fcheckout" replace /> : null}
       {isDelivery && showDeliveryNotice ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4">
           <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl shadow-black/20">
@@ -230,6 +232,10 @@ export default function CheckoutPage() {
               selon le créneau demandé, nous pouvons avoir besoin de vérifier la
               disponibilité du livreur avant validation définitive. Si un ajustement est
               nécessaire, nous vous proposerons rapidement un horaire estimé ou confirmé.
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-600">
+              Vérifiez votre commande dans les 5 minutes si le restaurant vous propose un nouveau créneau.
+              Sans réponse de votre part passé ce délai, ce nouveau créneau sera automatiquement accepté.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <button
@@ -492,6 +498,10 @@ export default function CheckoutPage() {
                   <div className="mt-4 rounded-3xl border border-brand-wood/12 bg-[linear-gradient(145deg,rgba(245,240,230,0.96),rgba(251,248,242,0.96))] p-5 text-sm leading-7 text-slate-600">
                     Votre créneau de livraison peut nécessiter une confirmation. Nous vous
                     confirmerons rapidement la disponibilité.
+                    <p className="mt-3">
+                      Si un nouveau créneau vous est proposé, pensez à vérifier votre commande dans les 5 minutes.
+                      Sans réponse, le créneau proposé sera accepté automatiquement.
+                    </p>
                   </div>
                 ) : null}
                 {deliveryRestrictionNotice ? (

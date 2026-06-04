@@ -13,7 +13,7 @@ interface AuthContextValue {
     email: string;
     password: string;
   }) => Promise<UserProfile | null>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (redirectPath?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         login,
         register,
-        loginWithGoogle: () => userService.signInWithGoogle(),
+        loginWithGoogle: (redirectPath?: string) => userService.signInWithGoogle(redirectPath),
         logout,
         refreshUser,
       }}
