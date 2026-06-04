@@ -18,13 +18,13 @@ export default function HomePage() {
   const galleryHighlights = [
     {
       title: 'Burger signature',
-      description: 'Un visuel gourmand, simple et direct dès le hero.',
+      description: 'Un burger généreux préparé minute, au coeur de la carte.',
       image: beefBurgers,
       alt: 'Burger signature du Petit Bougiote',
     },
     {
       title: 'Salade fraîche',
-      description: 'Une alternative fraîche et colorée à mettre en avant.',
+      description: 'Une option fraîche et équilibrée pour varier les envies.',
       image: cesarSalad,
       alt: 'Salade du Petit Bougiote',
     },
@@ -204,10 +204,10 @@ export default function HomePage() {
       <Reveal className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { icon: MapPin, title: 'Rue Diderot', text: 'Adresse simple à trouver pour un déjeuner, un café ou un retrait rapide.' },
-            { icon: ShoppingBag, title: 'Commande flexible', text: 'Sur place, click & collect ou livraison selon le moment et votre besoin.' },
-            { icon: Star, title: '5,0 Google', text: 'Une excellente impression locale à valoriser proprement, sans surjouer.' },
-            { icon: Phone, title: 'Double contact', text: 'Deux numéros visibles pour la prise de commande et les questions rapides.' },
+            { icon: MapPin, title: 'Rue Diderot', text: 'Une adresse pratique à Béziers pour déjeuner, faire une pause café ou récupérer sa commande.' },
+            { icon: ShoppingBag, title: 'Commande flexible', text: 'Sur place, à emporter ou en livraison locale selon votre envie du moment.' },
+            { icon: Star, title: '5,0 Google', text: 'Une adresse appréciée pour son accueil, ses burgers et son ambiance familiale.' },
+            { icon: Phone, title: 'Contact rapide', text: 'Un appel suffit pour se renseigner, commander ou confirmer un créneau.' },
           ].map((item) => {
             const Icon = item.icon;
             return (
@@ -248,7 +248,7 @@ export default function HomePage() {
           <SectionHeading
             eyebrow="Ambiance"
             title="Une adresse conviviale pour bien manger, prendre un café et revenir facilement"
-            description="Le ton reste chaleureux, propre et généreux, avec une identité visuelle proche de la carte imprimée et du logo vert existant."
+            description="Une ambiance chaleureuse, une carte gourmande et un service simple pour un vrai moment de quartier à Béziers."
           />
         </div>
         <div className="rounded-[2rem] border border-brand-green/10 bg-[radial-gradient(circle_at_top,#6ea35f,transparent_55%),linear-gradient(145deg,#2F5E33,#3E281A)] p-8 text-white">
