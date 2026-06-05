@@ -8,6 +8,7 @@ import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useCart } from '../../contexts/CartContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import type { MenuCardConfig } from '../../data/menuCards';
 import { formatPrice } from '../../lib/utils';
 import { menuService } from '../../services/menuService';
@@ -63,18 +64,20 @@ function QuantityControl({
   value,
   onDecrease,
   onIncrease,
+  disabled = false,
 }: {
   value: number;
   onDecrease: () => void;
   onIncrease: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="inline-flex items-center gap-2 rounded-full border border-brand-green/10 bg-white px-2 py-1">
-      <button type="button" onClick={onDecrease} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/10 text-slate-700">
+      <button type="button" disabled={disabled} onClick={onDecrease} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/10 text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">
         <Minus className="h-4 w-4" />
       </button>
       <span className="min-w-6 text-center text-sm font-semibold text-slate-950">{value}</span>
-      <button type="button" onClick={onIncrease} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/10 text-slate-700">
+      <button type="button" disabled={disabled} onClick={onIncrease} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/10 text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">
         <Plus className="h-4 w-4" />
       </button>
     </div>
@@ -115,6 +118,8 @@ export default function MenuPage() {
   const [configurableSelections, setConfigurableSelections] = useState<ConfigurableSelectionMap>({});
   const [selectedProductInitialQuantity, setSelectedProductInitialQuantity] = useState(1);
   const { addCustomItem, setFulfillmentType, setDiningMode, totalItems } = useCart();
+  const { settings, orderingDisabledMessage } = useRestaurant();
+  const orderingDisabled = !settings.orderingEnabled;
 
   useEffect(() => {
     void menuService.getProducts().then(setProducts);
@@ -474,6 +479,10 @@ export default function MenuPage() {
   }
 
   function addSectionSelection(section: MenuSection) {
+    if (orderingDisabled) {
+      return;
+    }
+
     if (serviceMode === 'delivery') {
       setFulfillmentType('delivery');
       setDiningMode(null);
@@ -543,10 +552,11 @@ export default function MenuPage() {
                     <div className="rounded-2xl bg-white px-4 py-3">
                       <p className="text-sm font-semibold text-slate-950">{standaloneLabel} {formatPrice(option.price)}</p>
                       <div className="mt-3 flex justify-end">
-                        <QuantityControl
-                          value={selection.solo}
-                          onDecrease={() => isAvailable && updateBurgerSelection(option.id, 'solo', -1)}
-                          onIncrease={() => isAvailable && updateBurgerSelection(option.id, 'solo', 1)}
+                          <QuantityControl
+                            disabled={!isAvailable || orderingDisabled}
+                            value={selection.solo}
+                            onDecrease={() => isAvailable && updateBurgerSelection(option.id, 'solo', -1)}
+                            onIncrease={() => isAvailable && updateBurgerSelection(option.id, 'solo', 1)}
                         />
                       </div>
                     </div>
@@ -555,6 +565,7 @@ export default function MenuPage() {
                         <p className="text-sm font-semibold text-slate-950">Menu {formatPrice(option.price + 3)}</p>
                         <div className="mt-3 flex justify-end">
                           <QuantityControl
+                            disabled={!isAvailable || orderingDisabled}
                             value={selection.menu}
                             onDecrease={() => isAvailable && updateBurgerSelection(option.id, 'menu', -1)}
                             onIncrease={() => isAvailable && updateBurgerSelection(option.id, 'menu', 1)}
@@ -574,11 +585,11 @@ export default function MenuPage() {
             </div>
             <button
               type="button"
-              disabled={getBurgerSelectionCount() === 0}
+              disabled={getBurgerSelectionCount() === 0 || orderingDisabled}
               onClick={() => addSectionSelection(section)}
               className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              Ajouter la sélection au panier
+              {orderingDisabled ? 'Commandes indisponibles' : 'Ajouter la sélection au panier'}
             </button>
           </div>
         </div>
@@ -619,6 +630,7 @@ export default function MenuPage() {
                       <p className="text-sm font-semibold text-slate-950">{formatPrice(product.price, product.priceLabel)}</p>
                       <div className="mt-3 flex justify-end">
                         <QuantityControl
+                          disabled={!product.isAvailable || orderingDisabled}
                           value={quantity}
                           onDecrease={() => updateSelection(section.key, product.id, -1)}
                           onIncrease={() => product.isAvailable && updateSelection(section.key, product.id, 1)}
@@ -640,6 +652,7 @@ export default function MenuPage() {
                     <p className="text-sm font-semibold text-slate-950">{formatPrice(formuleGourmandeProduct.price, formuleGourmandeProduct.priceLabel)}</p>
                     <div className="mt-3 flex justify-end">
                       <QuantityControl
+                        disabled={orderingDisabled}
                         value={formuleGourmandeQuantity}
                         onDecrease={() => updateConfigurableSelection(formuleGourmandeProduct.id, -1)}
                         onIncrease={() => updateConfigurableSelection(formuleGourmandeProduct.id, 1)}
@@ -647,13 +660,14 @@ export default function MenuPage() {
                     </div>
                     <button
                       type="button"
+                      disabled={orderingDisabled}
                       onClick={() => {
                         setSelectedProduct(formuleGourmandeProduct);
                         setSelectedProductInitialQuantity(formuleGourmandeQuantity > 0 ? formuleGourmandeQuantity : 1);
                       }}
-                      className="mt-3 w-full rounded-full bg-brand-deepgreen px-4 py-2 text-sm font-semibold text-white"
+                      className="mt-3 w-full rounded-full bg-brand-deepgreen px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                     >
-                      Composer la formule
+                      {orderingDisabled ? 'Commandes indisponibles' : 'Composer la formule'}
                     </button>
                   </div>
                 </div>
@@ -671,11 +685,11 @@ export default function MenuPage() {
             </div>
             <button
               type="button"
-              disabled={sectionCount === 0}
+              disabled={sectionCount === 0 || orderingDisabled}
               onClick={() => addSectionSelection(section)}
               className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              Ajouter la sélection au panier
+              {orderingDisabled ? 'Commandes indisponibles' : 'Ajouter la sélection au panier'}
             </button>
           </div>
         </div>
@@ -713,6 +727,7 @@ export default function MenuPage() {
                       <p className="text-sm font-semibold text-slate-950">{formatPrice(option.price)}</p>
                       <div className="mt-3 flex justify-end">
                         <QuantityControl
+                          disabled={!isAvailable || orderingDisabled}
                           value={quantity}
                           onDecrease={() => isAvailable && updateSelection(section.key, option.id, -1)}
                           onIncrease={() => isAvailable && updateSelection(section.key, option.id, 1)}
@@ -731,11 +746,11 @@ export default function MenuPage() {
             </div>
             <button
               type="button"
-              disabled={sectionCount === 0}
+              disabled={sectionCount === 0 || orderingDisabled}
               onClick={() => addSectionSelection(section)}
               className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              Ajouter la sélection au panier
+              {orderingDisabled ? 'Commandes indisponibles' : 'Ajouter la sélection au panier'}
             </button>
           </div>
         </div>
@@ -755,10 +770,11 @@ export default function MenuPage() {
               <span className="text-base font-semibold text-brand-deepgreen">{formatPrice(section.product.price, section.product.priceLabel)}</span>
               <button
                 type="button"
+                disabled={orderingDisabled}
                 onClick={() => setSelectedProduct(section.product ?? null)}
-                className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white"
+                className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Composer la formule
+                {orderingDisabled ? 'Commandes indisponibles' : 'Composer la formule'}
               </button>
             </div>
           </div>
@@ -827,6 +843,12 @@ export default function MenuPage() {
           <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600">
             Note livraison: les boissons chaudes, les petits-déjeuners et les formules chaudes ne sont pas disponibles en livraison. Si vous choisissez la livraison à la fin, ces articles seront retirés automatiquement du panier avec un message d’information.
           </p>
+          {orderingDisabled ? (
+            <div className="mt-5 rounded-[1.4rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-7 text-amber-900">
+              <p className="font-semibold text-amber-950">Commandes en ligne temporairement indisponibles</p>
+              <p className="mt-2">{orderingDisabledMessage}</p>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-8">
@@ -871,9 +893,15 @@ export default function MenuPage() {
             <Link to="/panier" className="rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">
               Voir le panier
             </Link>
-            <Link to="/checkout" className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white">
-              Passer au paiement
-            </Link>
+            {orderingDisabled ? (
+              <span className="rounded-full bg-slate-300 px-5 py-3 text-sm font-semibold text-slate-600">
+                Commandes indisponibles
+              </span>
+            ) : (
+              <Link to="/checkout" className="rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white">
+                Passer au paiement
+              </Link>
+            )}
           </div>
         </div>
       </Reveal>
@@ -923,6 +951,9 @@ export default function MenuPage() {
         initialQuantity={selectedProductInitialQuantity}
         onClose={() => setSelectedProduct(null)}
         onConfirm={(items) => {
+          if (orderingDisabled) {
+            return;
+          }
           if (serviceMode === 'delivery') {
             setFulfillmentType('delivery');
             setDiningMode(null);
@@ -935,6 +966,7 @@ export default function MenuPage() {
             setConfigurableSelections((current) => ({ ...current, [selectedProduct.id]: 0 }));
           }
         }}
+        orderingDisabled={orderingDisabled}
       />
     </>
   );

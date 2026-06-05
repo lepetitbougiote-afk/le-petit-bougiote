@@ -87,6 +87,12 @@ interface RemoteOrder {
   restaurant_note: string | null;
 }
 
+interface RestaurantOrderingRow {
+  announcement: string | null;
+  is_ordering_enabled: boolean;
+  is_temporarily_closed: boolean;
+}
+
 function sendJson(response: ServerResponse, statusCode: number, body: unknown) {
   response.statusCode = statusCode;
   response.setHeader('Content-Type', 'application/json');
@@ -277,6 +283,40 @@ function createAuthedSupabaseClient(env: StripeCheckoutEnvironment, accessToken:
       autoRefreshToken: false,
     },
   });
+}
+
+function createPublicSupabaseClient(env: StripeCheckoutEnvironment) {
+  if (!env.supabaseUrl || !env.supabaseAnonKey) {
+    throw new Error('Configuration Supabase manquante côté serveur.');
+  }
+
+  return createClient(env.supabaseUrl, env.supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+async function ensureOrderingEnabled(env: StripeCheckoutEnvironment) {
+  const client = createPublicSupabaseClient(env);
+  const { data, error } = await client
+    .from('restaurant_settings')
+    .select('announcement, is_ordering_enabled, is_temporarily_closed')
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return;
+  }
+
+  const settings = data as RestaurantOrderingRow;
+  if (!settings.is_ordering_enabled || settings.is_temporarily_closed) {
+    throw new Error(
+      settings.announcement?.trim() ||
+        'Les commandes en ligne sont temporairement indisponibles pour le moment.',
+    );
+  }
 }
 
 async function getAuthenticatedUser(env: StripeCheckoutEnvironment, request: IncomingMessage) {
@@ -554,6 +594,7 @@ export async function processStripeCheckoutRequest(
   try {
     const parsed = JSON.parse(rawBody);
     const validated = validateCheckoutRequest(parsed);
+    await ensureOrderingEnabled(env);
     const session = await createStripeCheckoutSession(env.stripeSecretKey, validated);
     return {
       statusCode: 200,

@@ -4,6 +4,7 @@ import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { business } from '../../data/business';
 import { formatPrice } from '../../lib/utils';
 import { analyticsService } from '../../services/analyticsService';
@@ -11,6 +12,9 @@ import { analyticsService } from '../../services/analyticsService';
 const DELIVERY_FEE = 4;
 
 export default function OrderPage() {
+  const { settings, orderingDisabledMessage } = useRestaurant();
+  const orderingDisabled = !settings.orderingEnabled;
+
   return (
     <>
       <SEO
@@ -31,6 +35,12 @@ export default function OrderPage() {
             <StatusBadge>Livraison locale {formatPrice(DELIVERY_FEE)}</StatusBadge>
             <StatusBadge>Double confirmation possible</StatusBadge>
           </div>
+          {orderingDisabled ? (
+            <div className="mt-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-7 text-amber-900">
+              <p className="font-semibold text-amber-950">Commandes en ligne temporairement indisponibles</p>
+              <p className="mt-2">{orderingDisabledMessage}</p>
+            </div>
+          ) : null}
         </Reveal>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -79,9 +89,15 @@ export default function OrderPage() {
               Depuis la carte, vous choisissez ensuite le mode souhaité: sur place, click & collect ou livraison. Si vous sélectionnez la livraison, le panier et le checkout ajoutent automatiquement le forfait Béziers.
             </p>
             <div className="mt-8 grid gap-3">
-              <Link to="/menu?service=delivery" className="rounded-full bg-white px-5 py-3 text-center text-sm font-semibold text-brand-green">
-                Ouvrir le menu en mode livraison
-              </Link>
+              {orderingDisabled ? (
+                <span className="rounded-full bg-white/70 px-5 py-3 text-center text-sm font-semibold text-slate-500">
+                  Commandes indisponibles pour le moment
+                </span>
+              ) : (
+                <Link to="/menu?service=delivery" className="rounded-full bg-white px-5 py-3 text-center text-sm font-semibold text-brand-green">
+                  Ouvrir le menu en mode livraison
+                </Link>
+              )}
               <a
                 href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
                 onClick={() => analyticsService.trackCallClick()}

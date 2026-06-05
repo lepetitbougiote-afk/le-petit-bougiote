@@ -4,6 +4,7 @@ import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { savePendingCheckoutSession } from '../../lib/stripeCheckout';
 import {
   formatPrice,
@@ -40,6 +41,7 @@ async function readApiResponse<T>(response: Response): Promise<T | { error?: str
 
 export default function CheckoutPage() {
   const { user, loading } = useAuth();
+  const { settings, orderingDisabledMessage } = useRestaurant();
   const {
     items,
     fulfillmentType: cartFulfillmentType,
@@ -80,6 +82,7 @@ export default function CheckoutPage() {
     [isDelivery],
   );
   const requiresDeliveryAccount = isDelivery && !loading && !user;
+  const orderingDisabled = !settings.orderingEnabled;
 
   useEffect(() => {
     if (!user || profileLoaded) {
@@ -128,6 +131,11 @@ export default function CheckoutPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (items.length === 0) {
+      return;
+    }
+
+    if (orderingDisabled) {
+      setCheckoutError(orderingDisabledMessage);
       return;
     }
 
@@ -216,7 +224,7 @@ export default function CheckoutPage() {
         path="/checkout"
       />
       {requiresDeliveryAccount ? <Navigate to="/connexion?redirect=%2Fcheckout" replace /> : null}
-      {isDelivery && showDeliveryNotice ? (
+      {isDelivery && showDeliveryNotice && !orderingDisabled ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 px-4">
           <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl shadow-black/20">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-wood/75">
@@ -269,6 +277,12 @@ export default function CheckoutPage() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_340px]">
           <Reveal className="rounded-[2rem] bg-white p-8">
             <form onSubmit={handleSubmit}>
+              {orderingDisabled ? (
+                <div className="mb-6 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-7 text-amber-900">
+                  <p className="font-semibold text-amber-950">Commandes en ligne temporairement indisponibles</p>
+                  <p className="mt-2">{orderingDisabledMessage}</p>
+                </div>
+              ) : null}
               <section>
                 <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-green/70">
                   Étape 1
@@ -516,10 +530,10 @@ export default function CheckoutPage() {
                 ) : null}
 
                 <button
-                  disabled={items.length === 0 || submitting}
+                  disabled={items.length === 0 || submitting || orderingDisabled}
                   className="mt-6 rounded-full bg-brand-deepgreen px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  {submitting ? 'Redirection en cours...' : 'Procéder au paiement'}
+                  {orderingDisabled ? 'Commandes indisponibles' : submitting ? 'Redirection en cours...' : 'Procéder au paiement'}
                 </button>
               </section>
             </form>

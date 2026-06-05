@@ -2,11 +2,13 @@ import { Link } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { analyticsService } from '../../services/analyticsService';
 import { formatPrice, getDiningModeLabel, getFulfillmentTypeLabel } from '../../lib/utils';
 
 export default function CartPage() {
   const { user } = useAuth();
+  const { settings, orderingDisabledMessage } = useRestaurant();
   const {
     items,
     fulfillmentType,
@@ -24,6 +26,7 @@ export default function CartPage() {
   const continueLabel = fulfillmentType === 'delivery' ? 'Continuer la commande livraison' : diningMode === 'a_emporter' ? 'Continuer à emporter' : 'Continuer sur place';
   const emptyText = fulfillmentType === 'delivery' ? 'Ajoutez quelques produits depuis la carte en mode livraison.' : 'Ajoutez quelques produits depuis la carte sur place.';
   const deliveryNeedsAccount = fulfillmentType === 'delivery' && !user;
+  const orderingDisabled = !settings.orderingEnabled;
 
   return (
     <>
@@ -141,9 +144,19 @@ export default function CartPage() {
                   </p>
                 </div>
               ) : null}
+              {orderingDisabled ? (
+                <div className="mt-6 rounded-[1.4rem] border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
+                  <p className="font-semibold text-amber-950">Commandes en ligne temporairement indisponibles</p>
+                  <p className="mt-2">{orderingDisabledMessage}</p>
+                </div>
+              ) : null}
               <div className="mt-6 grid gap-3">
                 <Link to={continuePath} className="rounded-full border border-brand-green/10 px-5 py-3 text-center text-sm font-semibold text-slate-700">{continueLabel}</Link>
-                {deliveryNeedsAccount ? (
+                {orderingDisabled ? (
+                  <span className="rounded-full bg-slate-300 px-5 py-3 text-center text-sm font-semibold text-slate-600">
+                    Commandes indisponibles
+                  </span>
+                ) : deliveryNeedsAccount ? (
                   <>
                     <Link to="/connexion?redirect=%2Fcheckout" className="rounded-full bg-brand-green px-5 py-3 text-center text-sm font-semibold text-white">
                       Se connecter pour payer

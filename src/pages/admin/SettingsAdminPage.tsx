@@ -148,12 +148,15 @@ export default function SettingsAdminPage() {
                 />
               </label>
               <label className="text-sm font-medium text-slate-700 md:col-span-2">
-                Message d’annonce
+                Message affiché au public
                 <textarea
                   value={form.announcement}
                   onChange={(event) => setForm((current) => ({ ...current, announcement: event.target.value }))}
                   className="mt-2 min-h-28 w-full rounded-2xl border border-brand-green/10 bg-brand-cream p-4 outline-none"
                 />
+                <span className="mt-2 block text-xs leading-6 text-slate-500">
+                  Ce message s’affiche notamment si vous désactivez les commandes en ligne.
+                </span>
               </label>
               <label className="text-sm font-medium text-slate-700 md:col-span-2">
                 Google Analytics Measurement ID
@@ -181,8 +184,13 @@ export default function SettingsAdminPage() {
                   }))
                 }
               />
-              Commande activée
+              Accepter les commandes en ligne
             </label>
+            {!form.orderingEnabled ? (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-900">
+                Les visiteurs pourront toujours consulter la carte, mais ils ne pourront plus ajouter au panier ni lancer un paiement.
+              </p>
+            ) : null}
             {message ? (
               <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 {message}

@@ -38,12 +38,14 @@ export function ProductConfiguratorModal({
   onClose,
   onConfirm,
   initialQuantity = 1,
+  orderingDisabled = false,
 }: {
   product: Product | null;
   open: boolean;
   onClose: () => void;
   onConfirm: (items: Array<Omit<CartItem, 'id'>>) => void;
   initialQuantity?: number;
+  orderingDisabled?: boolean;
 }) {
   const [configurator, setConfigurator] = useState<ProductConfigurator | null>(null);
   const [selectedByGroup, setSelectedByGroup] = useState<Record<string, string>>({});
@@ -274,9 +276,9 @@ export function ProductConfiguratorModal({
                                     <p className="text-xs text-slate-500">{formatPrice(option.price)}</p>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => isAvailable && updateBurgerSelection(option.id, 'solo', -1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700">-</button>
+                                    <button type="button" disabled={!isAvailable || orderingDisabled} onClick={() => isAvailable && updateBurgerSelection(option.id, 'solo', -1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">-</button>
                                     <span className="w-6 text-center text-sm font-semibold text-slate-950">{burgerSelection.solo}</span>
-                                    <button type="button" onClick={() => isAvailable && updateBurgerSelection(option.id, 'solo', 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700">+</button>
+                                    <button type="button" disabled={!isAvailable || orderingDisabled} onClick={() => isAvailable && updateBurgerSelection(option.id, 'solo', 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">+</button>
                                   </div>
                                 </div>
                               </div>
@@ -287,9 +289,9 @@ export function ProductConfiguratorModal({
                                     <p className="text-xs text-slate-500">{formatPrice(option.price + 3)}</p>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => isAvailable && updateBurgerSelection(option.id, 'menu', -1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700">-</button>
+                                    <button type="button" disabled={!isAvailable || orderingDisabled} onClick={() => isAvailable && updateBurgerSelection(option.id, 'menu', -1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">-</button>
                                     <span className="w-6 text-center text-sm font-semibold text-slate-950">{burgerSelection.menu}</span>
-                                    <button type="button" onClick={() => isAvailable && updateBurgerSelection(option.id, 'menu', 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700">+</button>
+                                    <button type="button" disabled={!isAvailable || orderingDisabled} onClick={() => isAvailable && updateBurgerSelection(option.id, 'menu', 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-brand-green/15 text-lg font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">+</button>
                                   </div>
                                 </div>
                               </div>
@@ -303,11 +305,11 @@ export function ProductConfiguratorModal({
                           key={option.id}
                           type="button"
                           onClick={() => {
-                            if (isAvailable) {
+                            if (isAvailable && !orderingDisabled) {
                               setSelectedByGroup((current) => ({ ...current, [group.id]: option.id }));
                             }
                           }}
-                          className={`rounded-[1.4rem] border p-4 text-left transition ${selected ? 'border-brand-green bg-white shadow-sm' : 'border-brand-border bg-white/80'} ${!isAvailable ? 'opacity-70' : ''}`}
+                          className={`rounded-[1.4rem] border p-4 text-left transition ${selected ? 'border-brand-green bg-white shadow-sm' : 'border-brand-border bg-white/80'} ${!isAvailable || orderingDisabled ? 'opacity-70' : ''}`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
@@ -340,11 +342,11 @@ export function ProductConfiguratorModal({
                 <div className="rounded-[1.6rem] border border-brand-green/10 bg-brand-offwhite p-5">
                   <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-green/70">Quantité</p>
                   <div className="mt-4 flex items-center justify-between gap-3">
-                    <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="h-11 w-11 rounded-full border border-brand-green/10 text-lg font-semibold text-slate-700">
+                    <button type="button" disabled={orderingDisabled} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="h-11 w-11 rounded-full border border-brand-green/10 text-lg font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">
                       -
                     </button>
                     <span className="text-lg font-semibold text-slate-950">{quantity}</span>
-                    <button type="button" onClick={() => setQuantity((value) => value + 1)} className="h-11 w-11 rounded-full border border-brand-green/10 text-lg font-semibold text-slate-700">
+                    <button type="button" disabled={orderingDisabled} onClick={() => setQuantity((value) => value + 1)} className="h-11 w-11 rounded-full border border-brand-green/10 text-lg font-semibold text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300">
                       +
                     </button>
                   </div>
@@ -352,7 +354,7 @@ export function ProductConfiguratorModal({
               ) : null}
               <label className="rounded-[1.6rem] border border-brand-green/10 bg-brand-offwhite p-5 text-sm font-medium text-slate-700">
                 Note pour la commande
-                <textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-3 min-h-28 w-full rounded-2xl border border-brand-green/10 bg-white p-4 outline-none" placeholder="Ex: sans oignons, sauce à part..." />
+                <textarea disabled={orderingDisabled} value={note} onChange={(event) => setNote(event.target.value)} className="mt-3 min-h-28 w-full rounded-2xl border border-brand-green/10 bg-white p-4 outline-none disabled:cursor-not-allowed disabled:bg-slate-100" placeholder="Ex: sans oignons, sauce à part..." />
               </label>
             </div>
 
@@ -371,7 +373,7 @@ export function ProductConfiguratorModal({
               </div>
               <button
                 type="button"
-                disabled={!isReady}
+                disabled={!isReady || orderingDisabled}
                 onClick={() => {
                   if (isBurgerConfigurator) {
                     onConfirm(buildBurgerItems());
@@ -411,7 +413,7 @@ export function ProductConfiguratorModal({
                 }}
                 className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-brand-deepgreen disabled:cursor-not-allowed disabled:bg-white/50"
               >
-                {isBurgerConfigurator ? 'Ajouter la sélection' : 'Ajouter au panier'}
+                {orderingDisabled ? 'Commandes indisponibles' : isBurgerConfigurator ? 'Ajouter la sélection' : 'Ajouter au panier'}
               </button>
             </div>
           </div>
