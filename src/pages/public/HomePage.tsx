@@ -107,12 +107,6 @@ export default function HomePage() {
                   Itinéraire Google Maps
                 </a>
               </div>
-              <div className="mt-4 flex max-w-[20rem] flex-wrap gap-2.5 text-xs text-white/92 sm:mt-8 sm:max-w-[23rem] sm:text-sm lg:mt-4 lg:max-w-[17rem] lg:gap-2">
-                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Burgers maison</span>
-                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Cafés & petit-déjeuner</span>
-                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Desserts & gourmandises</span>
-                <span className="rounded-full border border-white/22 bg-white/14 px-3.5 py-1.5 backdrop-blur-sm">Galerie du lieu</span>
-              </div>
             </div>
           </Reveal>
 

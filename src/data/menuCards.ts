@@ -43,9 +43,9 @@ export const menuCardConfigs: MenuCardConfig[] = [
   {
     id: 'menu-card-boissons-froides',
     key: 'boissons-froides',
-    title: 'Boissons froides',
-    description: 'Smoothies et boissons fraîches réunis dans une seule fiche.',
-    sectionKeys: ['smoothies', 'boissons-froides'],
+    title: 'Boissons fraîches',
+    description: 'Boissons soft, thés glacés et smoothies réunis dans une seule fiche.',
+    sectionKeys: ['boissons-froides', 'smoothies'],
     sortOrder: 3,
     isActive: true,
   },

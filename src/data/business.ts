@@ -27,7 +27,7 @@ export const business: BusinessSettings = {
     'Petit-déjeuner',
     'Cafés classiques',
     'Boissons gourmandes',
-    'Boissons froides',
+    'Boissons fraîches',
     'Salades',
     'Frites',
   ],

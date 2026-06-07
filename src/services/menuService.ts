@@ -2,7 +2,7 @@ import { menuCardConfigs, type MenuCardConfig } from '../data/menuCards';
 import { categories, productConfiguratorMap, products } from '../data/menu';
 import { simulateAsync } from '../lib/dataProvider';
 import { supabaseClient } from '../lib/supabaseClient';
-import type { Category, Product, ProductConfigurator } from '../types';
+import type { Category, Product, ProductChoiceOption, ProductConfigurator } from '../types';
 
 let productStore = [...products];
 let configuratorStore = structuredClone(productConfiguratorMap) as Record<string, ProductConfigurator>;
@@ -10,6 +10,211 @@ let menuCardStore = [...menuCardConfigs];
 
 const localProductBySlug = new Map(products.map((product) => [product.slug, product]));
 const localCategoryBySlug = new Map(categories.map((category) => [category.slug, category]));
+
+const FORCED_PRODUCT_CONTENT: Record<string, Partial<Product>> = {
+  cesar: {
+    name: 'Ceasar',
+    description: 'Iceberg, croûtons, poulet, copeaux de parmesan, ognion crispy, sauce ceasar.',
+  },
+  medit: {
+    description: 'Roquette, aubergine, feta, groseilles, noix, basilic, vinaigre balsamique.',
+  },
+  gourmandises: {
+    description: 'Choisissez ensuite brownie, donuts, muffins, cookies, croissant ou pain au chocolat.',
+  },
+  'verre-de-the': {
+    name: 'Thé glacé',
+  },
+  smoothies: {
+    sortOrder: 8,
+  },
+};
+
+const FORCED_BURGER_OPTIONS: Record<string, Pick<ProductChoiceOption, 'name' | 'description' | 'price'>> = {
+  alpin: {
+    name: 'Alpin',
+    price: 12.9,
+    description: 'Boeuf, rosti, reblochon, salade, tomates, compotée d’oignons, sauce tartare.',
+  },
+  classic: {
+    name: 'Classic',
+    price: 10.9,
+    description: 'Boeuf, comté, salade, tomates, oignons rouges, sauce biggy.',
+  },
+  magret: {
+    name: 'Magret',
+    price: 14.9,
+    description: 'Magret, brebis, roquette, tomates confites, compotée d’oignons, sauce poivre.',
+  },
+  texan: {
+    name: 'Texan',
+    price: 12.9,
+    description: 'Boeuf, bacon, cheddar fumé, salade, tomates, oignons frits, sauce barbecue.',
+  },
+  chevre: {
+    name: 'Chèvre',
+    price: 12.9,
+    description: 'Boeuf, chèvre, roquette, tomates confites, oignons frits, noix, miel.',
+  },
+  bombay: {
+    name: 'Bombay',
+    price: 11.9,
+    description: 'Poulet mariné, cheddar épicé, salade, tomates, oignons rouges, sauce tandoori.',
+  },
+  cajun: {
+    name: 'Cajun',
+    price: 11.9,
+    description: 'Poulet cajun, comté, salade, tomates, oignons rouges, sauce mayo cajun.',
+  },
+  veggie: {
+    name: 'Veggie',
+    price: 12.9,
+    description: 'Aubergine, tomates confites, roquette, chèvre, noix, sauce tartare.',
+  },
+  cheese: {
+    name: 'Cheese',
+    price: 8.9,
+    description: 'Boeuf, cheddar, biggy.',
+  },
+  chicken: {
+    name: 'Chicken',
+    price: 8.9,
+    description: 'Poulet, cheddar, mayo.',
+  },
+};
+
+const FORCED_BURGER_ORDER = [
+  'le-bougiote',
+  'alpin',
+  'classic',
+  'magret',
+  'texan',
+  'chevre',
+  'bombay',
+  'cajun',
+  'veggie',
+  'cheese',
+  'chicken',
+  'menu-enfants',
+];
+
+const FORCED_GOURMANDISE_OPTIONS: ProductChoiceOption[] = [
+  { id: 'brownie', name: 'Brownie', price: 2.4 },
+  { id: 'donut-chocolat', name: 'Donut chocolat', price: 2.5, meta: { family: 'Donuts' } },
+  { id: 'donut-fraise', name: 'Donut fraise', price: 2.5, meta: { family: 'Donuts' } },
+  { id: 'muffin-chocolat', name: 'Muffin chocolat', price: 3.2, meta: { family: 'Muffins' } },
+  { id: 'muffin-speculoos', name: 'Muffin speculoos', price: 3.2, meta: { family: 'Muffins' } },
+  { id: 'cookie-tout-chocolat', name: 'Cookie tout chocolat', price: 2.4, meta: { family: 'Cookies' } },
+  { id: 'cookie-classique', name: 'Cookie classique', price: 2.4, meta: { family: 'Cookies' } },
+  { id: 'croissant', name: 'Croissant', price: 1.1 },
+  { id: 'pain-au-chocolat', name: 'Pain au chocolat', price: 1.2 },
+];
+
+const FORCED_FORMULA_PASTRY_OPTIONS: ProductChoiceOption[] = FORCED_GOURMANDISE_OPTIONS.map((option) => ({
+  ...option,
+  price: 0,
+}));
+
+function normalizeMenuCard(card: MenuCardConfig): MenuCardConfig {
+  if (card.key !== 'boissons-froides') {
+    return card;
+  }
+
+  return {
+    ...card,
+    title: 'Boissons fraîches',
+    description: 'Boissons soft, thés glacés et smoothies réunis dans une seule fiche.',
+    sectionKeys: ['boissons-froides', 'smoothies'],
+  };
+}
+
+function normalizeProduct(product: Product): Product {
+  return {
+    ...product,
+    ...(FORCED_PRODUCT_CONTENT[product.slug] ?? {}),
+  };
+}
+
+function slugifyOptionName(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function normalizeConfigurator(configurator: ProductConfigurator): ProductConfigurator {
+  if (configurator.key === 'gourmandises') {
+    return {
+      ...configurator,
+      choiceGroups: configurator.choiceGroups.map((group) =>
+        group.sortOrder === 1
+          ? {
+              ...group,
+              options: FORCED_GOURMANDISE_OPTIONS.map((option) => ({
+                ...option,
+                isActive: true,
+                meta: {
+                  ...(option.meta ?? {}),
+                  remoteOptionId: group.options.find((current) => current.name === option.name)?.meta?.remoteOptionId ?? null,
+                },
+              })),
+            }
+          : group,
+      ),
+    };
+  }
+
+  if (configurator.key === 'formule-gourmande') {
+    return {
+      ...configurator,
+      choiceGroups: configurator.choiceGroups.map((group) =>
+        group.name === 'Pâtisserie incluse'
+          ? {
+              ...group,
+              options: FORCED_FORMULA_PASTRY_OPTIONS.map((option) => ({
+                ...option,
+                isActive: true,
+                meta: {
+                  ...(option.meta ?? {}),
+                  remoteOptionId: group.options.find((current) => current.name === option.name)?.meta?.remoteOptionId ?? null,
+                },
+              })),
+            }
+          : group,
+      ),
+    };
+  }
+
+  if (configurator.key !== 'burgers-beef') {
+    return configurator;
+  }
+
+  return {
+    ...configurator,
+    choiceGroups: configurator.choiceGroups.map((group) => {
+      if (group.id !== 'burger-choice' && group.sortOrder !== 1) {
+        return group;
+      }
+
+      return {
+        ...group,
+        options: group.options
+          .map((option) => {
+            const normalizedId = slugifyOptionName(option.name);
+            const forced = FORCED_BURGER_OPTIONS[option.id] ?? FORCED_BURGER_OPTIONS[normalizedId];
+            return forced ? { ...option, ...forced } : option;
+          })
+          .sort((a, b) => {
+            const aIndex = FORCED_BURGER_ORDER.indexOf(a.id);
+            const bIndex = FORCED_BURGER_ORDER.indexOf(b.id);
+            return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+          }),
+      };
+    }),
+  };
+}
 
 type SupabaseCategoryRow = {
   id: string;
@@ -66,7 +271,7 @@ function mapCategory(row: SupabaseCategoryRow): Category {
 
 function mapProduct(row: SupabaseProductRow): Product {
   const fallback = localProductBySlug.get(row.slug);
-  return {
+  return normalizeProduct({
     id: fallback?.id ?? row.id,
     name: row.name,
     slug: row.slug,
@@ -85,12 +290,12 @@ function mapProduct(row: SupabaseProductRow): Product {
     imageFit: fallback?.imageFit,
     productType: row.product_type ?? fallback?.productType ?? 'simple',
     configuratorKey: row.configurator_key ?? fallback?.configuratorKey,
-  };
+  });
 }
 
 function mapMenuCard(row: SupabaseMenuCardRow): MenuCardConfig {
   const fallback = menuCardConfigs.find((card) => card.key === row.key);
-  return {
+  return normalizeMenuCard({
     id: fallback?.id ?? row.id,
     key: row.key,
     title: row.title,
@@ -98,7 +303,7 @@ function mapMenuCard(row: SupabaseMenuCardRow): MenuCardConfig {
     sectionKeys: (row.section_keys as MenuCardConfig['sectionKeys']) ?? fallback?.sectionKeys ?? [],
     sortOrder: row.sort_order,
     isActive: row.is_active,
-  };
+  });
 }
 
 async function getSupabaseCategories(): Promise<Category[] | null> {
@@ -188,7 +393,7 @@ async function resolveRemoteCategoryId(localCategoryId: string): Promise<string 
 
   const localCategory = categories.find((category) => category.id === localCategoryId);
   if (!localCategory) {
-    return null;
+    return localCategoryId;
   }
 
   const { data, error } = await supabaseClient
@@ -244,7 +449,7 @@ async function getSupabaseConfigurator(configuratorKey: string): Promise<Product
   const fallbackProduct = products.find((item) => item.configuratorKey === configuratorKey);
   const fallbackGroups = fallbackConfigurator?.choiceGroups ?? [];
 
-  return {
+  return normalizeConfigurator({
     key: configuratorKey,
     productId: fallbackProduct?.id ?? productRow.slug,
     title: productRow.name,
@@ -283,7 +488,7 @@ async function getSupabaseConfigurator(configuratorKey: string): Promise<Product
           }),
       };
     }),
-  };
+  });
 }
 
 export const menuService = {
@@ -395,11 +600,12 @@ export const menuService = {
   async getProducts(): Promise<Product[]> {
     const remoteProducts = await getSupabaseProducts();
     if (remoteProducts) {
+      productStore = remoteProducts;
       return remoteProducts;
     }
 
     return simulateAsync(
-      [...productStore].sort((a, b) => a.sortOrder - b.sortOrder),
+      [...productStore].map(normalizeProduct).sort((a, b) => a.sortOrder - b.sortOrder),
     );
   },
 
@@ -411,7 +617,7 @@ export const menuService = {
     }
 
     return simulateAsync(
-      [...menuCardStore].filter((card) => card.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
+      [...menuCardStore].map(normalizeMenuCard).filter((card) => card.isActive).sort((a, b) => a.sortOrder - b.sortOrder),
     );
   },
 
@@ -515,10 +721,15 @@ export const menuService = {
   async getProductConfigurator(configuratorKey: string): Promise<ProductConfigurator | undefined> {
     const remoteConfigurator = await getSupabaseConfigurator(configuratorKey);
     if (remoteConfigurator) {
+      configuratorStore = {
+        ...configuratorStore,
+        [configuratorKey]: remoteConfigurator,
+      };
       return remoteConfigurator;
     }
 
-    return simulateAsync(configuratorStore[configuratorKey]);
+    const localConfigurator = configuratorStore[configuratorKey];
+    return simulateAsync(localConfigurator ? normalizeConfigurator(localConfigurator) : undefined);
   },
 
   async createProduct(product: Product): Promise<Product> {
@@ -676,6 +887,10 @@ export const menuService = {
     return this.updateProduct(productId, { isAvailable, availabilityNote });
   },
 
+  async updateProductSortOrder(productId: string, sortOrder: number): Promise<Product | undefined> {
+    return this.updateProduct(productId, { sortOrder });
+  },
+
   async updateProductChoiceAvailability(
     configuratorKey: string,
     optionId: string,
@@ -741,5 +956,135 @@ export const menuService = {
     };
 
     return simulateAsync(updatedConfigurator, 120);
+  },
+
+  async updateProductChoice(
+    configuratorKey: string,
+    optionId: string,
+    updates: Partial<ProductChoiceOption>,
+  ): Promise<ProductConfigurator | undefined> {
+    const currentConfigurator =
+      (await getSupabaseConfigurator(configuratorKey)) ??
+      configuratorStore[configuratorKey];
+
+    if (!currentConfigurator) {
+      return undefined;
+    }
+
+    let remoteOptionId: string | undefined;
+    let nextMetadata: Record<string, string | number | boolean | null> | undefined;
+
+    const nextGroups = currentConfigurator.choiceGroups.map((group) => ({
+      ...group,
+      options: group.options.map((option) => {
+        if (option.id !== optionId) {
+          return option;
+        }
+
+        remoteOptionId =
+          typeof option.meta?.remoteOptionId === 'string' ? option.meta.remoteOptionId : undefined;
+
+        nextMetadata = {
+          ...(option.meta ?? {}),
+          ...(updates.meta ?? {}),
+        };
+        delete nextMetadata.remoteOptionId;
+
+        return {
+          ...option,
+          ...updates,
+          meta: {
+            ...(nextMetadata ?? {}),
+            ...(remoteOptionId ? { remoteOptionId } : {}),
+          },
+        };
+      }),
+    }));
+
+    const updatedConfigurator: ProductConfigurator = {
+      ...currentConfigurator,
+      choiceGroups: nextGroups,
+    };
+
+    if (supabaseClient && remoteOptionId) {
+      const updatedOption = nextGroups.flatMap((group) => group.options).find((option) => option.id === optionId);
+      const { error } = await supabaseClient
+        .from('product_options')
+        .update({
+          name: updatedOption?.name,
+          description: updatedOption?.description ?? null,
+          price: updatedOption?.price ?? 0,
+          metadata: nextMetadata ?? {},
+          is_active: updatedOption?.isActive ?? true,
+        })
+        .eq('id', remoteOptionId);
+
+      if (error) {
+        return undefined;
+      }
+    }
+
+    configuratorStore = {
+      ...configuratorStore,
+      [configuratorKey]: updatedConfigurator,
+    };
+
+    return simulateAsync(updatedConfigurator, 120);
+  },
+
+  async updateProductChoiceSortOrder(
+    configuratorKey: string,
+    optionId: string,
+    sortOrder: number,
+  ): Promise<ProductConfigurator | undefined> {
+    const currentConfigurator =
+      (await getSupabaseConfigurator(configuratorKey)) ??
+      configuratorStore[configuratorKey];
+
+    if (!currentConfigurator) {
+      return undefined;
+    }
+
+    const optionToMove = currentConfigurator.choiceGroups
+      .flatMap((group) => group.options)
+      .find((option) => option.id === optionId);
+    const remoteOptionId =
+      typeof optionToMove?.meta?.remoteOptionId === 'string' ? optionToMove.meta.remoteOptionId : undefined;
+
+    if (supabaseClient && remoteOptionId) {
+      const { error } = await supabaseClient
+        .from('product_options')
+        .update({ sort_order: sortOrder })
+        .eq('id', remoteOptionId);
+
+      if (error) {
+        return undefined;
+      }
+    }
+
+    const nextConfigurator: ProductConfigurator = {
+      ...currentConfigurator,
+      choiceGroups: currentConfigurator.choiceGroups.map((group) => ({
+        ...group,
+        options: group.options.map((option) =>
+          option.id === optionId
+            ? {
+                ...option,
+                meta: {
+                  ...(option.meta ?? {}),
+                  sortOrder,
+                },
+              }
+            : option,
+        ),
+      })),
+    };
+
+    configuratorStore = {
+      ...configuratorStore,
+      [configuratorKey]: nextConfigurator,
+    };
+
+    return simulateAsync(nextConfigurator, 120);
   },
 };

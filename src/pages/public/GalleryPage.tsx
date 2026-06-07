@@ -10,7 +10,7 @@ export default function GalleryPage() {
   const [activeFilter, setActiveFilter] = useState<(typeof filters)[number]>('Tous');
 
   const images = useMemo(() => {
-    return galleryImages.filter((image) => activeFilter === 'Tous' || image.category === activeFilter);
+    return galleryImages.filter((image) => image.isActive && (activeFilter === 'Tous' || image.category === activeFilter));
   }, [activeFilter]);
 
   return (

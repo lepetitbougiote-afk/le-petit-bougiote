@@ -53,6 +53,12 @@ type MenuCard = {
   hidden?: boolean;
 };
 
+type OptionDisplayGroup = {
+  id: string;
+  title: string;
+  options: ProductChoiceOption[];
+};
+
 function getModeFromSearchParam(value: string | null): MenuServiceMode {
   if (value === 'sur_place' || value === 'a_emporter' || value === 'delivery') {
     return value;
@@ -103,6 +109,25 @@ function getSimpleProducts(products: Product[], categoryId: string) {
 
 function hasSectionTag(product: Product, sectionTag: string) {
   return product.tags.includes(sectionTag);
+}
+
+function getOptionDisplayGroups(options: ProductChoiceOption[]) {
+  return options.reduce<OptionDisplayGroup[]>((groups, option) => {
+    const family = typeof option.meta?.family === 'string' ? option.meta.family : null;
+    if (!family) {
+      groups.push({ id: option.id, title: option.name, options: [option] });
+      return groups;
+    }
+
+    const existingGroup = groups.find((group) => group.id === family);
+    if (existingGroup) {
+      existingGroup.options.push(option);
+      return groups;
+    }
+
+    groups.push({ id: family, title: family, options: [option] });
+    return groups;
+  }, []);
 }
 
 export default function MenuPage() {
@@ -230,6 +255,13 @@ export default function MenuPage() {
         configurator: configurators['boissons-gourmandes'],
       },
       {
+        key: 'boissons-froides',
+        title: 'Boissons soft',
+        description: 'Les boissons fraîches et softs à ajouter simplement à la commande.',
+        kind: 'simple',
+        products: boissonsFroidesProducts,
+      },
+      {
         key: 'smoothies',
         title: 'Smoothies',
         description: 'Les smoothies fruités à ajouter à la commande.',
@@ -243,13 +275,6 @@ export default function MenuPage() {
         description: 'Une formule prête à composer avec boisson gourmande et pâtisserie.',
         kind: 'configurable',
         product: formuleProduct,
-      },
-      {
-        key: 'boissons-froides',
-        title: 'Boissons froides',
-        description: 'Les boissons fraîches à ajouter simplement à la commande.',
-        kind: 'simple',
-        products: boissonsFroidesProducts,
       },
     ].filter((section) => {
       if (section.kind === 'simple') {
@@ -698,42 +723,56 @@ export default function MenuPage() {
 
     if (section.kind === 'options' && section.configurator) {
       const group = section.configurator.choiceGroups[0];
+      const displayGroups = getOptionDisplayGroups(group.options);
       const sectionCount = getSimpleSelectionCount(section.key);
       return (
         <div>
           <div className="grid gap-3">
-            {group.options.map((option: ProductChoiceOption) => {
-              const quantity = simpleSelections[section.key]?.[option.id] ?? 0;
-              const availabilityNote = getOptionAvailabilityNote(option);
-              const isAvailable = isOptionAvailable(option);
+            {displayGroups.map((displayGroup) => {
+              const multiFlavor = displayGroup.options.length > 1;
               return (
-                <div key={option.id} className="rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
-                  <div className="grid gap-4 md:grid-cols-[1fr_180px] md:items-center">
+                <div key={displayGroup.id} className="rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
+                  <div className={`grid gap-4 ${multiFlavor ? 'md:grid-cols-[1fr_180px_180px]' : 'md:grid-cols-[1fr_180px]'} md:items-center`}>
                     <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <p className="text-lg font-semibold text-slate-950">{option.name}</p>
-                        {!isAvailable ? (
-                          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                            Indisponible
-                          </span>
-                        ) : null}
-                      </div>
-                      {option.description ? <p className="mt-1 text-sm leading-7 text-slate-600">{option.description}</p> : null}
-                      {!isAvailable && availabilityNote ? (
-                        <p className="mt-2 text-sm leading-6 text-amber-800">{availabilityNote}</p>
-                      ) : null}
+                      <p className="text-lg font-semibold text-slate-950">{displayGroup.title}</p>
+                      {displayGroup.options.map((option) => {
+                        const isAvailable = isOptionAvailable(option);
+                        const availabilityNote = getOptionAvailabilityNote(option);
+                        return (
+                          <div key={option.id} className="mt-2 first:mt-1">
+                            {multiFlavor ? <p className="text-sm text-slate-600">{option.name}</p> : null}
+                            {option.description ? <p className="text-sm leading-7 text-slate-600">{option.description}</p> : null}
+                            {!isAvailable ? (
+                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                                Indisponible
+                              </span>
+                            ) : null}
+                            {!isAvailable && availabilityNote ? (
+                              <p className="mt-2 text-sm leading-6 text-amber-800">{availabilityNote}</p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
-                    <div className="rounded-2xl bg-white px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-950">{formatPrice(option.price)}</p>
-                      <div className="mt-3 flex justify-end">
-                        <QuantityControl
-                          disabled={!isAvailable || orderingDisabled}
-                          value={quantity}
-                          onDecrease={() => isAvailable && updateSelection(section.key, option.id, -1)}
-                          onIncrease={() => isAvailable && updateSelection(section.key, option.id, 1)}
-                        />
-                      </div>
-                    </div>
+                    {displayGroup.options.map((option) => {
+                      const quantity = simpleSelections[section.key]?.[option.id] ?? 0;
+                      const isAvailable = isOptionAvailable(option);
+                      return (
+                        <div key={option.id} className="rounded-2xl bg-white px-4 py-3">
+                          <p className="text-sm font-semibold text-slate-950">
+                            {multiFlavor ? `${option.name} ${formatPrice(option.price)}` : formatPrice(option.price)}
+                          </p>
+                          <div className="mt-3 flex justify-end">
+                            <QuantityControl
+                              disabled={!isAvailable || orderingDisabled}
+                              value={quantity}
+                              onDecrease={() => isAvailable && updateSelection(section.key, option.id, -1)}
+                              onIncrease={() => isAvailable && updateSelection(section.key, option.id, 1)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -838,7 +877,7 @@ export default function MenuPage() {
             </div>
           </div>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-600">
-            Les familles de produits sont regroupées dans des fiches simples: burgers, accompagnements, boissons froides, boissons chaudes, desserts et gourmandises.
+            Les familles de produits sont regroupées dans des fiches simples: burgers, accompagnements, boissons fraîches, boissons chaudes, desserts et gourmandises.
           </p>
           <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600">
             Note livraison: les boissons chaudes, les petits-déjeuners et les formules chaudes ne sont pas disponibles en livraison. Si vous choisissez la livraison à la fin, ces articles seront retirés automatiquement du panier avec un message d’information.
@@ -855,7 +894,7 @@ export default function MenuPage() {
           <SectionHeading
             eyebrow="À découvrir"
             title="Une carte pensée pour aller à l’essentiel"
-            description="Burgers, accompagnements, douceurs, boissons froides et boissons chaudes sont regroupés pour rendre la commande plus simple et plus claire."
+            description="Burgers, accompagnements, douceurs, boissons fraîches et boissons chaudes sont regroupés pour rendre la commande plus simple et plus claire."
           />
         </div>
 

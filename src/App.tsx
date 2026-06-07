@@ -13,6 +13,7 @@ import GalleryAdminPage from './pages/admin/GalleryAdminPage';
 import HoursAdminPage from './pages/admin/HoursAdminPage';
 import MenuAdminPage from './pages/admin/MenuAdminPage';
 import OrdersAdminPage from './pages/admin/OrdersAdminPage';
+import ProfilesAdminPage from './pages/admin/ProfilesAdminPage';
 import ProductsAdminPage from './pages/admin/ProductsAdminPage';
 import SettingsAdminPage from './pages/admin/SettingsAdminPage';
 import AuthCallbackPage from './pages/auth/AuthCallbackPage';
@@ -64,6 +65,7 @@ export default function App() {
                 <Route path="produits" element={<ProductsAdminPage />} />
                 <Route path="categories" element={<CategoriesAdminPage />} />
                 <Route path="clients" element={<CustomersAdminPage />} />
+                <Route path="profils" element={<ProfilesAdminPage />} />
                 <Route path="galerie" element={<GalleryAdminPage />} />
                 <Route path="horaires" element={<HoursAdminPage />} />
                 <Route path="parametres" element={<SettingsAdminPage />} />

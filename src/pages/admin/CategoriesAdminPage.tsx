@@ -15,7 +15,7 @@ const SECTION_KEY_OPTIONS: Array<{ key: MenuCardSectionKey; label: string }> = [
   { key: 'burgers', label: 'Burgers' },
   { key: 'accompagnements', label: 'Accompagnements' },
   { key: 'smoothies', label: 'Smoothies' },
-  { key: 'boissons-froides', label: 'Boissons froides' },
+  { key: 'boissons-froides', label: 'Boissons fraîches' },
   { key: 'petit-dejeuner', label: 'Petit-déjeuner' },
   { key: 'cafes-classiques', label: 'Cafés classiques' },
   { key: 'boissons-chaudes-simples', label: 'Boissons chaudes simples' },

@@ -4,6 +4,11 @@ import { simulateAsync } from '../lib/dataProvider';
 import { supabaseClient } from '../lib/supabaseClient';
 import type { CustomerSummary, UserProfile } from '../types';
 
+export interface AdminProfileSummary extends UserProfile {
+  roles: Array<'customer' | 'admin' | 'super_admin'>;
+  createdAt?: string;
+}
+
 let profileStore: UserProfile | null = null;
 
 async function loadRole(userId: string): Promise<UserProfile['role'] | undefined> {
@@ -163,6 +168,73 @@ export const userService = {
     }
 
     return simulateAsync(mockCustomers);
+  },
+
+  async getAdminProfiles(): Promise<AdminProfileSummary[]> {
+    if (supabaseClient) {
+      const { data: profiles, error } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, phone, email, address, created_at')
+        .order('created_at', { ascending: false });
+
+      if (!error && profiles) {
+        const { data: roles } = await supabaseClient
+          .from('user_roles')
+          .select('user_id, role');
+
+        return profiles.map((profile) => {
+          const profileRoles = (roles ?? [])
+            .filter((role) => role.user_id === profile.id)
+            .map((role) => role.role) as AdminProfileSummary['roles'];
+
+          const role =
+            profileRoles.includes('super_admin')
+              ? 'super_admin'
+              : profileRoles.includes('admin')
+                ? 'admin'
+                : 'customer';
+
+          return {
+            id: profile.id,
+            fullName: profile.full_name ?? 'Client',
+            phone: profile.phone ?? '',
+            email: profile.email ?? '',
+            address: profile.address ?? '',
+            role,
+            roles: profileRoles.length ? profileRoles : ['customer'],
+            createdAt: profile.created_at,
+          };
+        });
+      }
+    }
+
+    return simulateAsync(
+      mockCustomers.map((customer) => ({
+        ...customer,
+        roles: [customer.role ?? 'customer'],
+        createdAt: customer.lastOrderDate,
+      })),
+    );
+  },
+
+  async setAdminRole(userId: string, makeAdmin: boolean): Promise<boolean> {
+    if (supabaseClient) {
+      if (makeAdmin) {
+        const { error } = await supabaseClient
+          .from('user_roles')
+          .upsert({ user_id: userId, role: 'admin' }, { onConflict: 'user_id,role' });
+        return !error;
+      }
+
+      const { error } = await supabaseClient
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('role', 'admin');
+      return !error;
+    }
+
+    return simulateAsync(true);
   },
 
   async signIn(email: string, password: string): Promise<UserProfile> {

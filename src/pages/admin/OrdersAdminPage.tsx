@@ -25,6 +25,8 @@ const statuses: Array<OrderStatus | 'all'> = [
   'cancelled',
 ];
 
+const SEEN_ORDERS_STORAGE_KEY = 'bougiote-admin-seen-orders';
+
 export default function OrdersAdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
@@ -33,6 +35,23 @@ export default function OrdersAdminPage() {
   const [proposedTimeDrafts, setProposedTimeDrafts] = useState<Record<string, string>>({});
   const [actionLoadingByOrder, setActionLoadingByOrder] = useState<Record<string, boolean>>({});
   const [actionErrorByOrder, setActionErrorByOrder] = useState<Record<string, string>>({});
+  const [seenOrderIds, setSeenOrderIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+
+    const storedValue = window.localStorage.getItem(SEEN_ORDERS_STORAGE_KEY);
+    if (!storedValue) {
+      return [];
+    }
+
+    try {
+      return JSON.parse(storedValue) as string[];
+    } catch {
+      return [];
+    }
+  });
+  const [expandedOrderIds, setExpandedOrderIds] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadOrders() {
@@ -88,6 +107,23 @@ export default function OrdersAdminPage() {
       return matchesStatus && matchesSearch;
     });
   }, [activeStatus, orders, search]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(SEEN_ORDERS_STORAGE_KEY, JSON.stringify(seenOrderIds));
+  }, [seenOrderIds]);
+
+  function toggleOrderOpen(orderId: string) {
+    setSeenOrderIds((current) => (current.includes(orderId) ? current : [...current, orderId]));
+    setExpandedOrderIds((current) =>
+      current.includes(orderId)
+        ? current.filter((id) => id !== orderId)
+        : [...current, orderId],
+    );
+  }
 
   async function handleStatusUpdate(orderId: string, status: OrderStatus) {
     try {
@@ -224,78 +260,97 @@ export default function OrdersAdminPage() {
               (requiresDeliveryDecision || awaitingCustomerReply || order.paymentStatus === 'authorized');
             const actionLoading = actionLoadingByOrder[order.id] ?? false;
             const actionError = actionErrorByOrder[order.id];
+            const isSeen = seenOrderIds.includes(order.id);
+            const isExpanded = expandedOrderIds.includes(order.id);
 
             return (
-            <article key={order.id} className="rounded-[1.8rem] bg-white p-6">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <article key={order.id} className={`rounded-[1.8rem] border-2 p-6 transition-colors ${isSeen ? 'border-emerald-300 bg-emerald-50' : 'border-rose-400 bg-rose-100 shadow-[0_0_0_3px_rgba(244,63,94,0.08)]'}`}>
+              <button
+                type="button"
+                onClick={() => toggleOrderOpen(order.id)}
+                className="flex w-full flex-col gap-3 text-left md:flex-row md:items-start md:justify-between"
+              >
                 <div>
-                  <p className="text-xl font-semibold text-slate-950">{order.customerName}</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-xl font-semibold text-slate-950">{order.customerName}</p>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isSeen ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-600 text-white'}`}>
+                      {isSeen ? 'Déjà ouverte' : 'Nouvelle'}
+                    </span>
+                  </div>
                   <p className="mt-1 text-sm text-slate-500">
-                    {order.id} • {getFulfillmentTypeLabel(order.fulfillmentType)}
+                    {getFulfillmentTypeLabel(order.fulfillmentType)}
                     {order.customerPhone ? ` • ${order.customerPhone}` : ''}
                     {order.desiredTime ? ` • ${getDesiredTimeLabel(order.fulfillmentType).toLowerCase()} ${order.desiredTime}` : ''}
                   </p>
                 </div>
-                <StatusBadge tone={order.status === 'completed' ? 'success' : order.status === 'cancelled' ? 'danger' : 'warning'}>
-                  {getOrderStatusLabel(order.status)}
-                </StatusBadge>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <StatusBadge tone={order.confirmationStatus === 'confirmed' ? 'success' : order.confirmationStatus === 'cancelled' ? 'danger' : 'warning'}>
-                  {getConfirmationStatusLabel(order.confirmationStatus)}
-                </StatusBadge>
-                <StatusBadge
-                  tone={
-                    order.paymentStatus === 'paid'
-                      ? 'success'
-                      : order.paymentStatus === 'authorized'
-                        ? 'warning'
-                        : order.paymentStatus === 'cancelled' ||
-                            order.paymentStatus === 'capture_failed' ||
-                            order.paymentStatus === 'refund_failed'
-                          ? 'danger'
-                          : 'neutral'
-                  }
-                >
-                  {getPaymentStatusLabel(order.paymentStatus)}
-                </StatusBadge>
-                {order.fulfillmentType === 'delivery' ? (
-                  <StatusBadge tone={order.customerConfirmationRequired ? 'warning' : 'neutral'}>
-                    {order.customerConfirmationRequired ? 'Réponse client attendue' : 'Pas de réponse client en attente'}
+                <div className="flex items-center gap-3">
+                  <StatusBadge tone={order.status === 'completed' ? 'success' : order.status === 'cancelled' ? 'danger' : 'warning'}>
+                    {getOrderStatusLabel(order.status)}
                   </StatusBadge>
-                ) : null}
-              </div>
-              <div className="mt-5 rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Détail de la commande</p>
-                <div className="mt-4 grid gap-3">
-                  {order.items.length === 0 ? (
-                    <div className="rounded-2xl bg-white px-4 py-4 text-sm text-slate-500">
-                      Aucun article n’a pu être remonté pour cette commande.
-                    </div>
-                  ) : (
-                    order.items.map((item, index) => (
-                      <div key={`${order.id}-${index}`} className="rounded-2xl bg-white px-4 py-3">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-950">
-                              {item.quantity} × {item.productNameSnapshot}
-                            </p>
-                            {item.selectedOptions?.length ? (
-                              <p className="mt-1 text-sm text-slate-600">
-                                {item.selectedOptions.map((option) => option.label).join(' • ')}
-                              </p>
-                            ) : null}
-                            {item.itemNotes ? <p className="mt-1 text-sm text-slate-500">Note produit: {item.itemNotes}</p> : null}
-                          </div>
-                          <p className="text-sm font-semibold text-slate-950">{formatPrice(item.total)}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
+                  <span className="text-sm font-semibold text-slate-500">
+                    {isExpanded ? 'Masquer' : 'Ouvrir'}
+                  </span>
                 </div>
-              </div>
-              {order.notes ? <p className="mt-4 text-sm text-slate-600">Note: {order.notes}</p> : null}
-              {showDeliveryConfirmationPanel ? (
+              </button>
+
+              {isExpanded ? (
+                <>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <StatusBadge tone={order.confirmationStatus === 'confirmed' ? 'success' : order.confirmationStatus === 'cancelled' ? 'danger' : 'warning'}>
+                      {getConfirmationStatusLabel(order.confirmationStatus)}
+                    </StatusBadge>
+                    <StatusBadge
+                      tone={
+                        order.paymentStatus === 'paid'
+                          ? 'success'
+                          : order.paymentStatus === 'authorized'
+                            ? 'warning'
+                            : order.paymentStatus === 'cancelled' ||
+                                order.paymentStatus === 'capture_failed' ||
+                                order.paymentStatus === 'refund_failed'
+                              ? 'danger'
+                              : 'neutral'
+                      }
+                    >
+                      {getPaymentStatusLabel(order.paymentStatus)}
+                    </StatusBadge>
+                    {order.fulfillmentType === 'delivery' ? (
+                      <StatusBadge tone={order.customerConfirmationRequired ? 'warning' : 'neutral'}>
+                        {order.customerConfirmationRequired ? 'Réponse client attendue' : 'Pas de réponse client en attente'}
+                      </StatusBadge>
+                    ) : null}
+                  </div>
+                  <div className="mt-5 rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Détail de la commande</p>
+                    <div className="mt-4 grid gap-3">
+                      {order.items.length === 0 ? (
+                        <div className="rounded-2xl bg-white px-4 py-4 text-sm text-slate-500">
+                          Aucun article n’a pu être remonté pour cette commande.
+                        </div>
+                      ) : (
+                        order.items.map((item, index) => (
+                          <div key={`${order.id}-${index}`} className="rounded-2xl bg-white px-4 py-3">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-950">
+                                  {item.quantity} × {item.productNameSnapshot}
+                                </p>
+                                {item.selectedOptions?.length ? (
+                                  <p className="mt-1 text-sm text-slate-600">
+                                    {item.selectedOptions.map((option) => option.label).join(' • ')}
+                                  </p>
+                                ) : null}
+                                {item.itemNotes ? <p className="mt-1 text-sm text-slate-500">Note produit: {item.itemNotes}</p> : null}
+                              </div>
+                              <p className="text-sm font-semibold text-slate-950">{formatPrice(item.total)}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  {order.notes ? <p className="mt-4 text-sm text-slate-600">Note: {order.notes}</p> : null}
+                  {showDeliveryConfirmationPanel ? (
                 <div className="mt-5 rounded-[1.5rem] border border-brand-green/10 bg-brand-offwhite p-4">
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-green/70">Double confirmation</p>
                   {order.paymentStatus === 'authorized' ? (
@@ -384,33 +439,35 @@ export default function OrdersAdminPage() {
                     </div>
                   ) : null}
                 </div>
+                  ) : null}
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    {!requiresDeliveryDecision
+                      ? ([
+                          'pending_payment',
+                          'awaiting_restaurant_confirmation',
+                          'time_adjustment_requested',
+                          'confirmed',
+                          'preparing',
+                          'ready',
+                          'completed',
+                          'cancelled',
+                        ] as OrderStatus[]).map((status) => (
+                          <button key={status} type="button" disabled={actionLoading} onClick={() => void handleStatusUpdate(order.id, status)} className="rounded-full border border-brand-green/10 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            {getOrderStatusLabel(status)}
+                          </button>
+                        ))
+                      : null}
+                    <button
+                      type="button"
+                      disabled={actionLoading}
+                      onClick={() => void handleDelete(order.id)}
+                      className="rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </>
               ) : null}
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                {!requiresDeliveryDecision
-                  ? ([
-                      'pending_payment',
-                      'awaiting_restaurant_confirmation',
-                      'time_adjustment_requested',
-                      'confirmed',
-                      'preparing',
-                      'ready',
-                      'completed',
-                      'cancelled',
-                    ] as OrderStatus[]).map((status) => (
-                      <button key={status} type="button" disabled={actionLoading} onClick={() => void handleStatusUpdate(order.id, status)} className="rounded-full border border-brand-green/10 px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">
-                        {getOrderStatusLabel(status)}
-                      </button>
-                    ))
-                  : null}
-                <button
-                  type="button"
-                  disabled={actionLoading}
-                  onClick={() => void handleDelete(order.id)}
-                  className="rounded-full border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Supprimer
-                </button>
-              </div>
             </article>
             );
           })

@@ -12,6 +12,7 @@ const adminLinks = [
   { to: '/admin/produits', label: 'Produits', icon: UtensilsCrossed },
   { to: '/admin/categories', label: 'Catégories', icon: MenuSquare },
   { to: '/admin/clients', label: 'Clients', icon: Users },
+  { to: '/admin/profils', label: 'Profils', icon: Users },
   { to: '/admin/galerie', label: 'Galerie', icon: ImageIcon },
   { to: '/admin/horaires', label: 'Horaires', icon: Clock3 },
   { to: '/admin/parametres', label: 'Paramètres', icon: Settings },
