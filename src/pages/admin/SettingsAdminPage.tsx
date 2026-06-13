@@ -148,14 +148,14 @@ export default function SettingsAdminPage() {
                 />
               </label>
               <label className="text-sm font-medium text-slate-700 md:col-span-2">
-                Message affiché au public
+                Note visible sur le site
                 <textarea
                   value={form.announcement}
                   onChange={(event) => setForm((current) => ({ ...current, announcement: event.target.value }))}
                   className="mt-2 min-h-28 w-full rounded-2xl border border-brand-green/10 bg-brand-cream p-4 outline-none"
                 />
                 <span className="mt-2 block text-xs leading-6 text-slate-500">
-                  Ce message s’affiche notamment si vous désactivez les commandes en ligne.
+                  Cette note s’affiche en direct sur le site public. Si vous désactivez les commandes en ligne, elle est aussi reprise dans la fenêtre d’information.
                 </span>
               </label>
               <label className="text-sm font-medium text-slate-700 md:col-span-2">

@@ -226,7 +226,7 @@ export default function ProductsAdminPage() {
         });
       });
 
-    Object.entries(configurators).forEach(([configuratorKey, configurator]) => {
+    (Object.entries(configurators) as Array<[string, ProductConfigurator]>).forEach(([configuratorKey, configurator]) => {
       const sectionKey = getConfiguratorSectionKey(configuratorKey);
       if (!sectionKey) {
         return;

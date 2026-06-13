@@ -11,128 +11,12 @@ let menuCardStore = [...menuCardConfigs];
 const localProductBySlug = new Map(products.map((product) => [product.slug, product]));
 const localCategoryBySlug = new Map(categories.map((category) => [category.slug, category]));
 
-const FORCED_PRODUCT_CONTENT: Record<string, Partial<Product>> = {
-  cesar: {
-    name: 'Ceasar',
-    description: 'Iceberg, croûtons, poulet, copeaux de parmesan, ognion crispy, sauce ceasar.',
-  },
-  medit: {
-    description: 'Roquette, aubergine, feta, groseilles, noix, basilic, vinaigre balsamique.',
-  },
-  gourmandises: {
-    description: 'Choisissez ensuite brownie, donuts, muffins, cookies, croissant ou pain au chocolat.',
-  },
-  'verre-de-the': {
-    name: 'Thé glacé',
-  },
-  smoothies: {
-    sortOrder: 8,
-  },
-};
-
-const FORCED_BURGER_OPTIONS: Record<string, Pick<ProductChoiceOption, 'name' | 'description' | 'price'>> = {
-  alpin: {
-    name: 'Alpin',
-    price: 12.9,
-    description: 'Boeuf, rosti, reblochon, salade, tomates, compotée d’oignons, sauce tartare.',
-  },
-  classic: {
-    name: 'Classic',
-    price: 10.9,
-    description: 'Boeuf, comté, salade, tomates, oignons rouges, sauce biggy.',
-  },
-  magret: {
-    name: 'Magret',
-    price: 14.9,
-    description: 'Magret, brebis, roquette, tomates confites, compotée d’oignons, sauce poivre.',
-  },
-  texan: {
-    name: 'Texan',
-    price: 12.9,
-    description: 'Boeuf, bacon, cheddar fumé, salade, tomates, oignons frits, sauce barbecue.',
-  },
-  chevre: {
-    name: 'Chèvre',
-    price: 12.9,
-    description: 'Boeuf, chèvre, roquette, tomates confites, oignons frits, noix, miel.',
-  },
-  bombay: {
-    name: 'Bombay',
-    price: 11.9,
-    description: 'Poulet mariné, cheddar épicé, salade, tomates, oignons rouges, sauce tandoori.',
-  },
-  cajun: {
-    name: 'Cajun',
-    price: 11.9,
-    description: 'Poulet cajun, comté, salade, tomates, oignons rouges, sauce mayo cajun.',
-  },
-  veggie: {
-    name: 'Veggie',
-    price: 12.9,
-    description: 'Aubergine, tomates confites, roquette, chèvre, noix, sauce tartare.',
-  },
-  cheese: {
-    name: 'Cheese',
-    price: 8.9,
-    description: 'Boeuf, cheddar, biggy.',
-  },
-  chicken: {
-    name: 'Chicken',
-    price: 8.9,
-    description: 'Poulet, cheddar, mayo.',
-  },
-};
-
-const FORCED_BURGER_ORDER = [
-  'le-bougiote',
-  'alpin',
-  'classic',
-  'magret',
-  'texan',
-  'chevre',
-  'bombay',
-  'cajun',
-  'veggie',
-  'cheese',
-  'chicken',
-  'menu-enfants',
-];
-
-const FORCED_GOURMANDISE_OPTIONS: ProductChoiceOption[] = [
-  { id: 'brownie', name: 'Brownie', price: 2.4 },
-  { id: 'donut-chocolat', name: 'Donut chocolat', price: 2.5, meta: { family: 'Donuts' } },
-  { id: 'donut-fraise', name: 'Donut fraise', price: 2.5, meta: { family: 'Donuts' } },
-  { id: 'muffin-chocolat', name: 'Muffin chocolat', price: 3.2, meta: { family: 'Muffins' } },
-  { id: 'muffin-speculoos', name: 'Muffin speculoos', price: 3.2, meta: { family: 'Muffins' } },
-  { id: 'cookie-tout-chocolat', name: 'Cookie tout chocolat', price: 2.4, meta: { family: 'Cookies' } },
-  { id: 'cookie-classique', name: 'Cookie classique', price: 2.4, meta: { family: 'Cookies' } },
-  { id: 'croissant', name: 'Croissant', price: 1.1 },
-  { id: 'pain-au-chocolat', name: 'Pain au chocolat', price: 1.2 },
-];
-
-const FORCED_FORMULA_PASTRY_OPTIONS: ProductChoiceOption[] = FORCED_GOURMANDISE_OPTIONS.map((option) => ({
-  ...option,
-  price: 0,
-}));
-
 function normalizeMenuCard(card: MenuCardConfig): MenuCardConfig {
-  if (card.key !== 'boissons-froides') {
-    return card;
-  }
-
-  return {
-    ...card,
-    title: 'Boissons fraîches',
-    description: 'Boissons soft, thés glacés et smoothies réunis dans une seule fiche.',
-    sectionKeys: ['boissons-froides', 'smoothies'],
-  };
+  return card;
 }
 
 function normalizeProduct(product: Product): Product {
-  return {
-    ...product,
-    ...(FORCED_PRODUCT_CONTENT[product.slug] ?? {}),
-  };
+  return product;
 }
 
 function slugifyOptionName(value: string) {
@@ -144,73 +28,57 @@ function slugifyOptionName(value: string) {
     .replace(/^-+|-+$/g, '');
 }
 
+function inferOptionFamily(optionName: string) {
+  const normalized = slugifyOptionName(optionName);
+  if (normalized.startsWith('donut')) {
+    return 'Donuts';
+  }
+  if (normalized.startsWith('muffin')) {
+    return 'Muffins';
+  }
+  if (normalized.startsWith('cookie')) {
+    return 'Cookies';
+  }
+  return null;
+}
+
 function normalizeConfigurator(configurator: ProductConfigurator): ProductConfigurator {
-  if (configurator.key === 'gourmandises') {
-    return {
-      ...configurator,
-      choiceGroups: configurator.choiceGroups.map((group) =>
-        group.sortOrder === 1
-          ? {
-              ...group,
-              options: FORCED_GOURMANDISE_OPTIONS.map((option) => ({
-                ...option,
-                isActive: true,
-                meta: {
-                  ...(option.meta ?? {}),
-                  remoteOptionId: group.options.find((current) => current.name === option.name)?.meta?.remoteOptionId ?? null,
-                },
-              })),
-            }
-          : group,
-      ),
-    };
-  }
-
-  if (configurator.key === 'formule-gourmande') {
-    return {
-      ...configurator,
-      choiceGroups: configurator.choiceGroups.map((group) =>
-        group.name === 'Pâtisserie incluse'
-          ? {
-              ...group,
-              options: FORCED_FORMULA_PASTRY_OPTIONS.map((option) => ({
-                ...option,
-                isActive: true,
-                meta: {
-                  ...(option.meta ?? {}),
-                  remoteOptionId: group.options.find((current) => current.name === option.name)?.meta?.remoteOptionId ?? null,
-                },
-              })),
-            }
-          : group,
-      ),
-    };
-  }
-
-  if (configurator.key !== 'burgers-beef') {
-    return configurator;
-  }
+  const fallbackConfigurator = productConfiguratorMap[configurator.key];
 
   return {
     ...configurator,
     choiceGroups: configurator.choiceGroups.map((group) => {
-      if (group.id !== 'burger-choice' && group.sortOrder !== 1) {
-        return group;
-      }
+      const fallbackGroup =
+        fallbackConfigurator?.choiceGroups.find((item) => item.id === group.id) ??
+        fallbackConfigurator?.choiceGroups.find((item) => item.sortOrder === group.sortOrder) ??
+        fallbackConfigurator?.choiceGroups.find((item) => item.name === group.name);
 
       return {
         ...group,
-        options: group.options
-          .map((option) => {
-            const normalizedId = slugifyOptionName(option.name);
-            const forced = FORCED_BURGER_OPTIONS[option.id] ?? FORCED_BURGER_OPTIONS[normalizedId];
-            return forced ? { ...option, ...forced } : option;
-          })
-          .sort((a, b) => {
-            const aIndex = FORCED_BURGER_ORDER.indexOf(a.id);
-            const bIndex = FORCED_BURGER_ORDER.indexOf(b.id);
-            return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
-          }),
+        options: group.options.map((option) => {
+          const fallbackOption =
+            fallbackGroup?.options.find((item) => item.id === option.id) ??
+            fallbackGroup?.options.find((item) => item.name === option.name) ??
+            fallbackGroup?.options.find((item) => slugifyOptionName(item.name) === slugifyOptionName(option.name));
+
+          const inferredFamily =
+            configurator.key === 'gourmandises' ||
+            (configurator.key === 'formule-gourmande' && group.name === 'Pâtisserie incluse')
+              ? inferOptionFamily(option.name)
+              : null;
+
+          return {
+            ...option,
+            meta: {
+              ...(fallbackOption?.meta ?? {}),
+              ...(option.meta ?? {}),
+              family:
+                typeof option.meta?.family === 'string'
+                  ? option.meta.family
+                  : inferredFamily ?? fallbackOption?.meta?.family ?? null,
+            },
+          };
+        }),
       };
     }),
   };

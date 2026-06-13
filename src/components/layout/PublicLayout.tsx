@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 export function PublicLayout() {
   const { loading, orderingDisabledMessage, settings } = useRestaurant();
   const [showOrderingModal, setShowOrderingModal] = useState(false);
+  const publicAnnouncement = settings.announcement.trim();
   const modalStorageKey = useMemo(
     () => `bougiote-ordering-modal:${settings.orderingEnabled ? 'open' : orderingDisabledMessage}`,
     [orderingDisabledMessage, settings.orderingEnabled],
@@ -39,6 +40,14 @@ export function PublicLayout() {
     <div className="min-h-screen bg-brand-cream text-slate-900">
       <ScrollToTop />
       <PublicNavbar />
+      {!loading && publicAnnouncement ? (
+        <div className="border-y border-brand-green/10 bg-white/90">
+          <div className="mx-auto max-w-7xl px-4 py-3 text-sm leading-7 text-slate-700 sm:px-6 lg:px-8">
+            <span className="font-semibold text-brand-deepgreen">Note du moment :</span>{' '}
+            {publicAnnouncement}
+          </div>
+        </div>
+      ) : null}
       {!loading && !settings.orderingEnabled && showOrderingModal ? (
         <div className="fixed inset-0 z-[1100] grid place-items-center bg-slate-950/55 px-4">
           <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-2xl shadow-black/20">
