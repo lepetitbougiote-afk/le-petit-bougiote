@@ -1,5 +1,6 @@
 import { Helmet } from 'react-helmet-async';
-import { business, brandAssets } from '../../data/business';
+import { brandAssets } from '../../data/business';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 
 interface SEOProps {
   title: string;
@@ -11,26 +12,27 @@ interface SEOProps {
 const siteUrl = 'https://le-petit-bougiote.pages.dev';
 
 export function SEO({ title, description, path = '/', image = brandAssets.heroImage }: SEOProps) {
+  const { settings } = useRestaurant();
   const url = new URL(path, siteUrl).toString();
 
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
-    name: business.name,
+    name: settings.name,
     image: new URL(image, siteUrl).toString(),
     logo: new URL(brandAssets.logoImage, siteUrl).toString(),
     address: {
       '@type': 'PostalAddress',
-      streetAddress: business.address,
-      addressLocality: business.city,
-      postalCode: business.postalCode,
+      streetAddress: settings.address,
+      addressLocality: settings.city,
+      postalCode: settings.postalCode,
       addressCountry: 'FR',
     },
-    telephone: [business.phonePrimary, business.phoneSecondary],
-    priceRange: business.priceRange,
+    telephone: [settings.phonePrimary, settings.phoneSecondary],
+    priceRange: settings.priceRange,
     servesCuisine: ['Burgers', 'Coffee', 'Desserts', 'Snacking'],
     url,
-    openingHoursSpecification: business.openingHours
+    openingHoursSpecification: settings.openingHours
       .filter((item) => !item.isClosed && item.opensAt && item.closesAt)
       .map((item) => ({
         '@type': 'OpeningHoursSpecification',

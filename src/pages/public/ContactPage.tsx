@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
-import { business } from '../../data/business';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { analyticsService } from '../../services/analyticsService';
 
 export default function ContactPage() {
+  const { settings } = useRestaurant();
+
   return (
     <>
       <SEO
@@ -27,8 +29,8 @@ export default function ContactPage() {
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-cream text-brand-deepgreen"><MapPin className="h-5 w-5" /></div>
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-green/70">Adresse</p>
               </div>
-              <p className="mt-3 text-2xl font-semibold text-slate-950">{business.address}</p>
-              <p className="mt-1 text-slate-600">{business.postalCode} {business.city}</p>
+              <p className="mt-3 text-2xl font-semibold text-slate-950">{settings.address}</p>
+              <p className="mt-1 text-slate-600">{settings.postalCode} {settings.city}</p>
             </div>
             <div className="rounded-[1.8rem] bg-white p-6">
               <div className="flex items-center gap-3">
@@ -36,7 +38,7 @@ export default function ContactPage() {
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-green/70">Téléphones</p>
               </div>
               <div className="mt-4 flex flex-wrap gap-3">
-                {[business.phonePrimary, business.phoneSecondary].map((phone) => (
+                {[settings.phonePrimary, settings.phoneSecondary].map((phone) => (
                   <a
                     key={phone}
                     href={`tel:${phone.replace(/\s+/g, '')}`}
@@ -54,7 +56,7 @@ export default function ContactPage() {
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-green/70">Horaires</p>
               </div>
               <div className="mt-4 grid gap-2 text-sm text-slate-700">
-                {business.openingHours.map((item) => (
+                {settings.openingHours.map((item) => (
                   <div key={item.day} className="flex items-center justify-between rounded-2xl bg-brand-cream px-4 py-3">
                     <span>{item.day}</span>
                     <span>{item.isClosed ? 'Fermé' : `${item.opensAt?.replace(':', 'h')} – ${item.closesAt?.replace(':', 'h')}`}</span>
@@ -63,17 +65,17 @@ export default function ContactPage() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              <a href={business.mapUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.trackDirectionsClick()} className="rounded-full bg-brand-deepgreen px-5 py-3 text-center text-sm font-semibold text-white">
+              <a href={settings.mapUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.trackDirectionsClick()} className="rounded-full bg-brand-deepgreen px-5 py-3 text-center text-sm font-semibold text-white">
                 Itinéraire
               </a>
-              <a href={business.mapUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.trackDirectionsClick()} className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700">
+              <a href={settings.mapUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.trackDirectionsClick()} className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700">
                 Ouvrir dans Google Maps
               </a>
-              <a href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`} onClick={() => analyticsService.trackCallClick()} className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700">
-                Appeler 04 58 28 15 22
+              <a href={`tel:${settings.phonePrimary.replace(/\s+/g, '')}`} onClick={() => analyticsService.trackCallClick()} className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700">
+                Appeler {settings.phonePrimary}
               </a>
-              <a href={`tel:${business.phoneSecondary.replace(/\s+/g, '')}`} onClick={() => analyticsService.trackCallClick()} className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700">
-                Appeler 07 59 71 46 29
+              <a href={`tel:${settings.phoneSecondary.replace(/\s+/g, '')}`} onClick={() => analyticsService.trackCallClick()} className="rounded-full border border-brand-border bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700">
+                Appeler {settings.phoneSecondary}
               </a>
               <Link to="/livraison" className="rounded-full bg-brand-wood px-5 py-3 text-center text-sm font-semibold text-white sm:col-span-2">
                 Livraison
@@ -87,7 +89,7 @@ export default function ContactPage() {
                 <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-cream text-brand-deepgreen"><Star className="h-5 w-5" /></div>
                 <div>
                   <p className="text-lg font-semibold text-slate-950">5,0 / 5 sur Google</p>
-                  <p className="text-sm text-slate-600">{business.reviewCountLabel} • {business.priceRange}</p>
+                  <p className="text-sm text-slate-600">{settings.reviewCountLabel} • {settings.priceRange}</p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
@@ -112,7 +114,7 @@ export default function ContactPage() {
                 />
               </div>
               <div className="flex justify-center p-5">
-                <a href={business.mapUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.trackDirectionsClick()} className="inline-flex items-center rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">
+                <a href={settings.mapUrl} target="_blank" rel="noreferrer" onClick={() => analyticsService.trackDirectionsClick()} className="inline-flex items-center rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white">
                   Ouvrir la fiche Google Maps <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </div>
@@ -120,7 +122,7 @@ export default function ContactPage() {
           </Reveal>
         </div>
       </section>
-      <a href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`} className="fixed bottom-4 right-4 inline-flex items-center rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white shadow-2xl lg:hidden">
+      <a href={`tel:${settings.phonePrimary.replace(/\s+/g, '')}`} className="fixed bottom-4 right-4 inline-flex items-center rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white shadow-2xl lg:hidden">
         <Phone className="mr-2 h-4 w-4" />
         Appeler
       </a>

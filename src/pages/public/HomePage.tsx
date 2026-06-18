@@ -4,7 +4,7 @@ import { SEO } from '../../components/seo/SEO';
 import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
-import { business } from '../../data/business';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { getTodayOpeningStatus } from '../../lib/utils';
 import { analyticsService } from '../../services/analyticsService';
 import heroBackground from '../../../identity/hero picture.png';
@@ -15,6 +15,7 @@ import cesarSalad from '../../assets/menu/cesar-salad.webp';
 import salonMonde from '../../assets/venue/salon-monde.jpg';
 
 export default function HomePage() {
+  const { settings } = useRestaurant();
   const galleryHighlights = [
     {
       title: 'Burger signature',
@@ -80,8 +81,8 @@ export default function HomePage() {
                 <StatusBadge tone="success">Sur place</StatusBadge>
                 <StatusBadge tone="success">Livraison locale</StatusBadge>
                 <StatusBadge>5,0 sur Google</StatusBadge>
-                <StatusBadge>{business.brandLine}</StatusBadge>
-                <StatusBadge>{getTodayOpeningStatus(business.openingHours)}</StatusBadge>
+                <StatusBadge>{settings.brandLine}</StatusBadge>
+                <StatusBadge>{getTodayOpeningStatus(settings.openingHours)}</StatusBadge>
               </div>
               <h1 className="mt-5 max-w-[18rem] text-[1.18rem] font-semibold leading-[1.12] tracking-tight text-white [text-shadow:0_8px_30px_rgba(0,0,0,0.38)] sm:max-w-[22rem] sm:text-[1.5rem] lg:mt-3 lg:max-w-[16.5rem] lg:text-[1.85rem] lg:leading-[1]">
                 Burgers, cafés & douceurs dans une ambiance familiale à Béziers
@@ -91,14 +92,14 @@ export default function HomePage() {
                   Menu
                 </Link>
                 <a
-                  href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
+                  href={`tel:${settings.phonePrimary.replace(/\s+/g, '')}`}
                   onClick={() => analyticsService.trackCallClick()}
                   className="rounded-full border border-white/28 bg-white/18 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm"
                 >
                   Appeler maintenant
                 </a>
                 <a
-                  href={business.mapUrl}
+                  href={settings.mapUrl}
                   target="_blank"
                   rel="noreferrer"
                   onClick={() => analyticsService.trackDirectionsClick()}
@@ -248,7 +249,7 @@ export default function HomePage() {
         <div className="rounded-[2rem] border border-brand-green/10 bg-[radial-gradient(circle_at_top,#6ea35f,transparent_55%),linear-gradient(145deg,#2F5E33,#3E281A)] p-8 text-white">
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-white/65">Avis Google</p>
           <p className="mt-4 text-4xl font-semibold">5,0 / 5</p>
-          <p className="mt-2 text-white/75">{business.reviewCountLabel}</p>
+          <p className="mt-2 text-white/75">{settings.reviewCountLabel}</p>
           <Link to="/avis" className="mt-6 inline-flex rounded-full bg-white px-5 py-3 text-sm font-semibold text-brand-green">
             Voir les avis
           </Link>

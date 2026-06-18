@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink } from 'react-router-dom';
 import logoImage from '../../assets/logo.png';
-import { business } from '../../data/business';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { analyticsService } from '../../services/analyticsService';
 import { cn } from '../../lib/utils';
 
@@ -23,6 +23,7 @@ export function PublicNavbar() {
   const [open, setOpen] = useState(false);
   const { totalItems } = useCart();
   const { user } = useAuth();
+  const { settings } = useRestaurant();
   const accountTarget =
     user?.role === 'admin' || user?.role === 'super_admin'
       ? '/admin/dashboard'
@@ -50,8 +51,8 @@ export function PublicNavbar() {
         <Link to="/" className="flex min-w-0 items-center gap-3">
           <img src={logoImage} alt="Le Petit Bougiote Coffee & Burger" className="h-12 w-12 rounded-full object-cover ring-1 ring-brand-green/10" />
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold tracking-tight text-slate-950">{business.name}</p>
-            <p className="truncate text-xs font-medium uppercase tracking-[0.25em] text-brand-green/70">{business.brandLine}</p>
+            <p className="truncate text-base font-semibold tracking-tight text-slate-950">{settings.name}</p>
+            <p className="truncate text-xs font-medium uppercase tracking-[0.25em] text-brand-green/70">{settings.brandLine}</p>
           </div>
         </Link>
 
@@ -86,7 +87,7 @@ export function PublicNavbar() {
             {accountLabel}
           </Link>
           <a
-            href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
+            href={`tel:${settings.phonePrimary.replace(/\s+/g, '')}`}
             onClick={() => analyticsService.trackCallClick()}
             className="inline-flex h-11 items-center justify-center rounded-full bg-brand-green px-5 text-sm font-semibold text-white shadow-lg shadow-brand-green/20"
           >
@@ -165,7 +166,7 @@ export function PublicNavbar() {
             </div>
             <div className="grid grid-cols-1 gap-3">
               <a
-                href={`tel:${business.phonePrimary.replace(/\s+/g, '')}`}
+                href={`tel:${settings.phonePrimary.replace(/\s+/g, '')}`}
                 onClick={() => analyticsService.trackCallClick()}
                 className="rounded-2xl bg-brand-deepgreen px-4 py-3.5 text-center text-sm font-semibold text-white shadow-lg shadow-brand-deepgreen/20"
               >
