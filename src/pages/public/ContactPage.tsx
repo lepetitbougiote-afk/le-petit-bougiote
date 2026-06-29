@@ -5,6 +5,7 @@ import { Reveal } from '../../components/ui/Reveal';
 import { SectionHeading } from '../../components/ui/SectionHeading';
 import { useRestaurant } from '../../contexts/RestaurantContext';
 import { analyticsService } from '../../services/analyticsService';
+import { restaurantSchema, webPageSchema } from '../../lib/schema';
 
 export default function ContactPage() {
   const { settings } = useRestaurant();
@@ -12,16 +13,24 @@ export default function ContactPage() {
   return (
     <>
       <SEO
-        title="Contact & horaires | Le Petit Bougiote Béziers"
-        description="Adresse, téléphones, horaires et accès pour rejoindre Le Petit Bougiote au 28 Rue Diderot à Béziers."
+        title="Contact et accès | Le Petit Bougiote Béziers"
+        description="Adresse, téléphone et itinéraire du Petit Bougiote : restaurant situé au 28 Rue Diderot, dans le centre-ville de Béziers."
         path="/contact"
+        schemas={[
+          restaurantSchema(),
+          webPageSchema('/contact', 'Contact et accès | Le Petit Bougiote Béziers', 'Adresse, téléphone et accès au restaurant.'),
+        ]}
       />
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <SectionHeading
+          level={1}
           eyebrow="Contact"
           title="Adresse, horaires et accès"
           description="Retrouvez facilement l’adresse, les horaires et les liens utiles pour venir sur place, appeler ou préparer une livraison."
         />
+        <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">
+          Le Petit Bougiote se trouve dans le centre-ville de Béziers. Retrouvez ci-dessous les coordonnées cohérentes à utiliser pour votre trajet ou votre appel : Le Petit Bougiote, 28 Rue Diderot, 34500 Béziers, 04 58 28 15 22.
+        </p>
         <div className="mt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <Reveal className="grid gap-4">
             <div className="rounded-[1.8rem] bg-white p-6">

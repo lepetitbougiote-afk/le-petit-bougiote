@@ -9,10 +9,12 @@ import { SectionHeading } from '../../components/ui/SectionHeading';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useCart } from '../../contexts/CartContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
-import type { MenuCardConfig } from '../../data/menuCards';
+import { menuCardConfigs, type MenuCardConfig } from '../../data/menuCards';
+import { productConfiguratorMap, products as localProducts } from '../../data/menu';
 import { formatPrice } from '../../lib/utils';
 import { menuService } from '../../services/menuService';
 import type { CartItem, Product, ProductChoiceOption, ProductConfigurator } from '../../types';
+import { menuSchema, restaurantSchema, webPageSchema } from '../../lib/schema';
 
 type MenuServiceMode = OrderModeChoice | null;
 type QuantityMap = Record<string, number>;
@@ -132,10 +134,10 @@ function getOptionDisplayGroups(options: ProductChoiceOption[]) {
 
 export default function MenuPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [configurators, setConfigurators] = useState<Record<string, ProductConfigurator>>({});
+  const [products, setProducts] = useState<Product[]>(localProducts);
+  const [configurators, setConfigurators] = useState<Record<string, ProductConfigurator>>(productConfiguratorMap);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [menuCards, setMenuCards] = useState<MenuCardConfig[]>([]);
+  const [menuCards, setMenuCards] = useState<MenuCardConfig[]>(menuCardConfigs);
   const [serviceMode, setServiceMode] = useState<MenuServiceMode>(() => getModeFromSearchParam(searchParams.get('service')));
   const [openCardKey, setOpenCardKey] = useState<MenuCard['key'] | null>(null);
   const [simpleSelections, setSimpleSelections] = useState<Record<string, QuantityMap>>({});
@@ -827,12 +829,18 @@ export default function MenuPage() {
   return (
     <>
       <SEO
-        title="Menu Le Petit Bougiote Béziers | Burgers, cafés, desserts & boissons"
-        description="Découvrez le menu Le Petit Bougiote à Béziers : burgers, accompagnements, boissons, desserts et formules."
+        title="Menu à Béziers : burgers, cafés et desserts"
+        description="Consultez la carte du Petit Bougiote à Béziers : burgers faits maison, cafés, desserts et boissons. Disponibilités à confirmer sur place."
         path="/menu"
+        schemas={[
+          restaurantSchema(),
+          menuSchema(),
+          webPageSchema('/menu', 'Menu à Béziers : burgers, cafés et desserts', 'Carte du Petit Bougiote à Béziers.'),
+        ]}
       />
       <Reveal className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <SectionHeading
+          level={1}
           eyebrow="Menu"
           title="Consultez librement la carte"
           description="Préparez votre panier d’abord, puis choisissez à la fin entre sur place, à emporter ou livraison."
@@ -878,6 +886,9 @@ export default function MenuPage() {
           </div>
           <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-600">
             Les familles de produits sont regroupées dans des fiches simples: burgers, accompagnements, boissons fraîches, boissons chaudes, desserts et gourmandises.
+          </p>
+          <p className="mt-3 max-w-4xl text-sm font-medium leading-7 text-slate-700">
+            Carte disponible sur place — appelez le restaurant pour confirmer les disponibilités du jour.
           </p>
           <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-600">
             Note livraison: les boissons chaudes, les petits-déjeuners et les formules chaudes ne sont pas disponibles en livraison. Si vous choisissez la livraison à la fin, ces articles seront retirés automatiquement du panier avec un message d’information.

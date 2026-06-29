@@ -16,6 +16,7 @@ const navLinks = [
   { label: 'À propos', to: '/a-propos' },
   { label: 'Galerie', to: '/galerie' },
   { label: 'Avis', to: '/avis' },
+  { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact' },
 ];
 

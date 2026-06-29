@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, StaticRouter } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { AuthProvider } from './contexts/AuthContext';
@@ -30,13 +31,19 @@ import HomePage from './pages/public/HomePage';
 import DeliveryPage from './pages/public/OrderPage';
 import MenuPage from './pages/public/MenuPage';
 import ReviewsPage from './pages/public/ReviewsPage';
+import BlogIndexPage from './pages/public/BlogIndexPage';
+import BlogArticlePage from './pages/public/BlogArticlePage';
+import NotFoundPage from './pages/public/NotFoundPage';
 
-export default function App() {
+export default function App({ location }: { location?: string }) {
+  const Router = ({ children }: { children: ReactNode }) =>
+    location ? <StaticRouter location={location}>{children}</StaticRouter> : <BrowserRouter>{children}</BrowserRouter>;
+
   return (
     <RestaurantProvider>
       <AuthProvider>
         <CartProvider>
-          <BrowserRouter>
+          <Router>
             <Routes>
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
@@ -56,6 +63,10 @@ export default function App() {
                 <Route path="/galerie" element={<GalleryPage />} />
                 <Route path="/avis" element={<ReviewsPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/blog" element={<BlogIndexPage />} />
+                <Route path="/blog/:slug" element={<BlogArticlePage />} />
+                <Route path="/404" element={<NotFoundPage />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Route>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<Navigate to="/admin/dashboard" replace />} />
@@ -71,7 +82,7 @@ export default function App() {
                 <Route path="parametres" element={<SettingsAdminPage />} />
               </Route>
             </Routes>
-          </BrowserRouter>
+          </Router>
         </CartProvider>
       </AuthProvider>
     </RestaurantProvider>

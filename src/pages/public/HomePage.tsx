@@ -13,6 +13,10 @@ import heroMobileLogo from '../../assets/transparent-logo-hero.png';
 import beefBurgers from '../../assets/menu/beef-burgers.webp';
 import cesarSalad from '../../assets/menu/cesar-salad.webp';
 import salonMonde from '../../assets/venue/salon-monde.jpg';
+import { restaurantSchema, webPageSchema, websiteSchema } from '../../lib/schema';
+
+const homeTitle = 'Restaurant à Béziers | Le Petit Bougiote';
+const homeDescription = 'Restaurant convivial au centre-ville de Béziers : burgers faits maison, cafés, desserts, boissons et vente à emporter au 28 Rue Diderot.';
 
 export default function HomePage() {
   const { settings } = useRestaurant();
@@ -40,9 +44,10 @@ export default function HomePage() {
   return (
     <>
       <SEO
-        title="Le Petit Bougiote Béziers | Coffee, Burger & Desserts"
-        description="Restaurant convivial à Béziers, Le Petit Bougiote propose burgers, cafés, desserts, boissons et vente à emporter au 28 Rue Diderot."
+        title={homeTitle}
+        description={homeDescription}
         path="/"
+        schemas={[restaurantSchema(), websiteSchema(), webPageSchema('/', homeTitle, homeDescription)]}
       />
 
       <section className="relative isolate overflow-hidden">
@@ -255,6 +260,40 @@ export default function HomePage() {
           </Link>
         </div>
       </Reveal>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="guides-locaux">
+        <div className="rounded-[2rem] bg-white p-8">
+          <h2 id="guides-locaux" className="text-3xl font-semibold tracking-tight text-slate-950">Conseils pour manger au centre-ville de Béziers</h2>
+          <p className="mt-4 max-w-3xl leading-7 text-slate-600">Découvrez nos guides pratiques sur les burgers, les pauses café et dessert, la vente à emporter et les bonnes questions à se poser avant de choisir une adresse en centre-ville.</p>
+          <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3 text-sm font-semibold text-brand-green">
+            <Link to="/blog/restaurant-centre-ville-beziers">Restaurant au centre-ville</Link>
+            <Link to="/blog/burger-beziers-fait-maison">Burger fait maison</Link>
+            <Link to="/blog/vente-a-emporter-beziers">Vente à emporter</Link>
+            <Link to="/blog/cafe-dessert-beziers">Café et dessert</Link>
+            <Link to="/blog/ou-manger-burger-beziers">Où manger un burger ?</Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8" aria-labelledby="questions-frequentes">
+        <div className="rounded-[2rem] bg-white p-8">
+          <h2 id="questions-frequentes" className="text-3xl font-semibold tracking-tight text-slate-950">Questions fréquentes</h2>
+          <div className="mt-6 grid gap-6 md:grid-cols-2">
+            {[
+              ['Où se trouve Le Petit Bougiote à Béziers ?', 'Le restaurant se trouve au 28 Rue Diderot, 34500 Béziers, dans le centre-ville.'],
+              ['Proposez-vous la vente à emporter ?', 'Oui. Consultez la carte puis appelez le restaurant pour confirmer les disponibilités du jour.'],
+              ['Peut-on venir pour un café ou un dessert ?', 'Oui, les cafés, boissons et desserts font partie des catégories proposées.'],
+              ['Comment contacter le restaurant ?', `Appelez le ${settings.phonePrimary} ou consultez la page contact pour l’adresse et l’itinéraire.`],
+            ].map(([question, answer]) => (
+              <div key={question}>
+                <h3 className="text-lg font-semibold text-slate-950">{question}</h3>
+                <p className="mt-2 text-sm leading-7 text-slate-600">{answer}</p>
+              </div>
+            ))}
+          </div>
+          <Link to="/contact" className="mt-7 inline-flex rounded-full bg-brand-deepgreen px-5 py-3 text-sm font-semibold text-white">Contact et itinéraire</Link>
+        </div>
+      </section>
 
     </>
   );

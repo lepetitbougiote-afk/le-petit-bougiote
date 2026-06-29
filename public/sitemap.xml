@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://le-petit-bougiote.pages.dev/</loc></url>
-  <url><loc>https://le-petit-bougiote.pages.dev/menu</loc></url>
-  <url><loc>https://le-petit-bougiote.pages.dev/commander</loc></url>
-  <url><loc>https://le-petit-bougiote.pages.dev/a-propos</loc></url>
-  <url><loc>https://le-petit-bougiote.pages.dev/galerie</loc></url>
-  <url><loc>https://le-petit-bougiote.pages.dev/avis</loc></url>
-  <url><loc>https://le-petit-bougiote.pages.dev/contact</loc></url>
+  <url><loc>https://lepetitbougiote.fr/</loc><lastmod>2026-06-29</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://lepetitbougiote.fr/menu</loc><lastmod>2026-06-29</lastmod><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://lepetitbougiote.fr/contact</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://lepetitbougiote.fr/blog</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lepetitbougiote.fr/blog/restaurant-centre-ville-beziers</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lepetitbougiote.fr/blog/burger-beziers-fait-maison</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lepetitbougiote.fr/blog/vente-a-emporter-beziers</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lepetitbougiote.fr/blog/cafe-dessert-beziers</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lepetitbougiote.fr/blog/ou-manger-burger-beziers</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://lepetitbougiote.fr/a-propos</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://lepetitbougiote.fr/galerie</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://lepetitbougiote.fr/avis</loc><lastmod>2026-06-29</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
 </urlset>

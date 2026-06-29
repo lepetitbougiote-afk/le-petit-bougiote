@@ -1,65 +1,45 @@
 import { Helmet } from 'react-helmet-async';
 import { brandAssets } from '../../data/business';
-import { useRestaurant } from '../../contexts/RestaurantContext';
+import { absoluteUrl } from '../../config/seo';
+import type { JsonLd } from '../../lib/schema';
 
 interface SEOProps {
   title: string;
   description: string;
   path?: string;
   image?: string;
+  type?: 'website' | 'article';
+  schemas?: JsonLd[];
+  noindex?: boolean;
 }
 
-const siteUrl = 'https://le-petit-bougiote.pages.dev';
-
-export function SEO({ title, description, path = '/', image = brandAssets.heroImage }: SEOProps) {
-  const { settings } = useRestaurant();
-  const url = new URL(path, siteUrl).toString();
-
-  const schema = {
-    '@context': 'https://schema.org',
-    '@type': 'Restaurant',
-    name: settings.name,
-    image: new URL(image, siteUrl).toString(),
-    logo: new URL(brandAssets.logoImage, siteUrl).toString(),
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: settings.address,
-      addressLocality: settings.city,
-      postalCode: settings.postalCode,
-      addressCountry: 'FR',
-    },
-    telephone: [settings.phonePrimary, settings.phoneSecondary],
-    priceRange: settings.priceRange,
-    servesCuisine: ['Burgers', 'Coffee', 'Desserts', 'Snacking'],
-    url,
-    openingHoursSpecification: settings.openingHours
-      .filter((item) => !item.isClosed && item.opensAt && item.closesAt)
-      .map((item) => ({
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: item.day,
-        opens: item.opensAt,
-        closes: item.closesAt,
-      })),
-  };
+export function SEO({ title, description, path = '/', image = brandAssets.heroImage, type = 'website', schemas = [], noindex = false }: SEOProps) {
+  const url = absoluteUrl(path);
+  const imageUrl = image.startsWith('http') ? image : absoluteUrl(image);
 
   return (
     <Helmet>
       <html lang="fr" />
       <title>{title}</title>
       <meta name="description" content={description} />
-      <meta name="keywords" content="restaurant Béziers, burger Béziers, coffee shop Béziers, desserts Béziers, vente à emporter Béziers, restaurant rue Diderot Béziers, café Béziers" />
+      <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large'} />
       <meta name="theme-color" content="#3f7a3d" />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
-      <meta property="og:image" content={new URL(image, siteUrl).toString()} />
-      <meta property="og:type" content="website" />
+      <meta property="og:image" content={imageUrl} />
+      <meta property="og:image:alt" content="Le Petit Bougiote à Béziers" />
+      <meta property="og:type" content={type} />
       <meta property="og:url" content={url} />
+      <meta property="og:site_name" content="Le Petit Bougiote" />
+      <meta property="og:locale" content="fr_FR" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={new URL(image, siteUrl).toString()} />
+      <meta name="twitter:image" content={imageUrl} />
       <link rel="canonical" href={url} />
-      <script type="application/ld+json">{JSON.stringify(schema)}</script>
+      {schemas.map((schema, index) => (
+        <script key={index} type="application/ld+json">{JSON.stringify(schema)}</script>
+      ))}
     </Helmet>
   );
 }

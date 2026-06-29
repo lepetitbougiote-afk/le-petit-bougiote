@@ -36,6 +36,7 @@ export function PublicFooter() {
             <Link to="/livraison">Livraison</Link>
             <Link to="/compte">Compte client</Link>
             <Link to="/contact">Contact</Link>
+            <Link to="/blog">Guides locaux</Link>
           </div>
         </div>
       </div>

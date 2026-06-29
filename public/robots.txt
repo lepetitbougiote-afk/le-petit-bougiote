@@ -1,4 +1,6 @@
+# All standards-compliant search and AI crawlers are allowed.
 User-agent: *
 Allow: /
 
-Sitemap: https://le-petit-bougiote.pages.dev/sitemap.xml
+Sitemap: https://lepetitbougiote.fr/sitemap.xml
+Host: lepetitbougiote.fr
